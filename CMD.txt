@@ -1,0 +1,3 @@
+gcc qwix.c tinyexpr.c -o qwix.exe
+nasm -f win32 %s.asm -o %s.obj   
+GoLink /console /entry _start /mix %s.obj kernel32.dll user32.dll msvcrt.dll

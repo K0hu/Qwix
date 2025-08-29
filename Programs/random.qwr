@@ -1,0 +1,5 @@
+randvar. {0} ; Var to load
+randvar randint 1 10 ; Getting random num 
+
+fmt. "Random number: %d" ; Formated string
+print #randvar fmt ; Printing the random num
