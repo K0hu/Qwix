@@ -1309,6 +1309,6 @@ cleanup:
     }
     if (code) free(code);
     if (file) fclose(file);
-    if (error) free(error);
+    if (incl) free(incl);
     return 0;
 }
