@@ -1106,6 +1106,7 @@ int main(int argc, char *argv[]) {
     int total_token_count = 0; // Total token count
     Token *all_tokens = malloc(sizeof(Token) * 10); // All the tokens
     int all_tokens_capacity = 10; // Total token capacity
+    char error[256];
 
     /* FILENAME */
     const char *filename = NULL; 
@@ -1138,7 +1139,8 @@ int main(int argc, char *argv[]) {
     FILE *file = fopen(filename, "r");
     if (!file) {
         errno = ENOENT;
-        perror(RED "Error: Failed to open file" RESET);
+        snprintf(error, sizeof(error), RED "Error: Failed to open file | '%S'" RESET, filename);
+        perror(error);
         return 1;
     } 
 
