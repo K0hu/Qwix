@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Qwix — Syntax Referenz</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <!-- Highlight.js styles & script (CDN) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/vs2015.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+  <script>hljs.highlightAll();</script>
+  <style>
+    :root{
+      --accent:#1F6FEB;
+      --text:#222;
+      --muted:#6b6b6b;
+      --bg:#f7f9fc;
+      --card:#ffffff;
+      --code-bg:#0b1220;
+      --code-color:#e6eef9;
+      font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      color:var(--text);
+    }
+    body{margin:0; background:linear-gradient(180deg,#f6fbff 0%, #ffffff 100%);}
+    .page{max-width:920px;margin:36px auto;padding:28px;}
+    .header{display:flex;align-items:center;gap:16px}
+    .logo{width:56px;height:56px;border-radius:10px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:20px;box-shadow:0 6px 18px rgba(31,111,235,0.14)}
+    h1{margin:0;font-size:28px;color:var(--accent)}
+    p.lead{margin:6px 0 18px;color:var(--muted)}
+    .toc{background:var(--card);padding:14px;border-radius:10px;box-shadow:0 4px 12px rgba(15,23,36,0.04);margin:18px 0}
+    .toc a{display:block;color:var(--accent);text-decoration:none;padding:6px 0}
+    section{margin:20px 0;padding:18px;background:var(--card);border-radius:10px;box-shadow:0 6px 20px rgba(15,23,36,0.04)}
+    section h2{margin-top:0;color:var(--accent)}
+    .code-card{background:var(--bg);padding:12px;border-radius:8px;border:1px solid #e6eef9;margin:10px 0}
+    pre.hljs{background:var(--code-bg) !important;color:var(--code-color) !important;border-radius:6px;padding:12px;overflow:auto;font-size:12px}
+    dl{margin:0}
+    dt{font-weight:600;margin-top:8px}
+    dd{margin:0 0 8px 14px;color:var(--muted)}
+    .example-title{display:inline-block;padding:6px 10px;background:var(--accent);color:white;border-radius:6px;margin-bottom:8px;font-weight:600}
+    footer{margin-top:28px;color:var(--muted);font-size:13px;text-align:center}
+    @media (max-width:600px){.page{margin:12px;padding:16px} h1{font-size:22px}}
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="header">
+      <div class="logo">QX</div>
+      <div>
+        <h1>Qwix — Syntax Referenz</h1>
+        <div class="lead">Original-Abschnitte integriert · Beispiele als formatierter Code</div>
+      </div>
+    </div>
+
+    <div class="toc">
+      <strong>Inhaltsverzeichnis</strong>
+      <a href="#einleitung">Einleitung</a>
+      <a href="#definitions">1. Definitionsbefehle</a>
+      <a href="#integriert">2. Integrierte Befehle</a>
+      <a href="#makro">3. Makro-Befehle</a>
+      <a href="#kontrollfluss">4. Zeichen-Operationen / Kontrollfluss</a>
+      <a href="#operatoren">5. Weitere Zeichen &amp; Operatoren</a>
+      <a href="#beispiele">Beispiele</a>
+      <a href="#window">Window Beispiel</a>
+    </div>
+
+    <section id="einleitung">
+      <h2>Einleitung</h2>
+      <p>Qwix ist eine minimalistische (Makro-)Programmiersprache, die in C implementiert ist und NASM-win32 Code erzeugt.</p>
+    </section>
+
+    <section id="definitions">
+      <h2>1. Definitionsbefehle</h2>
+      <dl>
+        <dt>|name par</dt>
+        <dd>Allokation im .bss-Segment. [|name 'par'] oder [|name "par"] reserviert String und [|name 0-9+] reserviert Zahl</dd>
+        <dt>name. par</dt>
+        <dd>definiert Variable im .data-Segment. 'string' / "string" für Strings. {0-9+/Rechnung} für Integer (nur Ints können redefiniert werden). Keine Floats, Doubles oder Arrays in Qwix</dd>
+        <dt>define name par</dt>
+        <dd>Makrodefinition (NASM %define)</dd>
+      </dl>
+    </section>
+
+    <section id="integriert">
+      <h2>2. Integrierte Befehle</h2>
+      <dl>
+        <dt>print par ...</dt>
+        <dd>Konsolenausgabe (Strings, '#' markiert DWORD/Int)</dd>
+        <dt>var randint min max</dt>
+        <dd>Zufallszahl (Compile-Zeit, Ausnahme include [randint])</dd>
+        <dt>atoi var string (var)</dt>
+        <dd>String → Int, Ergebnis in var</dd>
+        <dt>prompt var msg</dt>
+        <dd>Eingabeaufforderung (msg ausgeben, Eingabe in var)</dd>
+        <dt>include name</dt>
+        <dd>Macro für extern, mit [path] eigene .obj einbinden</dd>
+      </dl>
+    </section>
+
+    <section id="makro">
+      <h2>3. Makro-Befehle</h2>
+      <dl>
+        <dt>clr num</dt><dd>Stack nach Funktionsaufruf leeren (add esp, num)</dd>
+        <dt>mov par par</dt><dd>Daten bewegen ('#' = dword)</dd>
+        <dt>xor par par</dt><dd>XOR</dd>
+        <dt>try par par</dt><dd>Test (test par, par)</dd>
+      </dl>
+    </section>
+
+    <section id="kontrollfluss">
+      <h2>4. Zeichen-Operationen / Kontrollfluss</h2>
+      <dl>
+        <dt>(.) var % var/num Compare</dt><dd>Vergleich (cmp). '.' = nur Namen übernehmen</dd>
+        <dt>var &amp; var</dt><dd>Stringvergleich</dd>
+        <dt>/ num</dt><dd>Return + Stack leeren</dd>
+        <dt>*</dt><dd>Programmende (jmp exit8)</dd>
+        <dt>:name</dt><dd>Label (name:)</dd>
+        <dt>::name</dt><dd>Funktionsaufruf (call)</dd>
+        <dt>name.:</dt><dd>Jump-Definition (name:)</dd>
+        <dt>! name</dt><dd>jne name (Jump if not)</dd>
+        <dt>&gt; name</dt><dd>jg name (Jump if greater)</dd>
+        <dt>&lt; name</dt><dd>jl name (Jump if less)</dd>
+        <dt>? name</dt><dd>je name (Jump if equal)</dd>
+      </dl>
+    </section>
+
+    <section id="operatoren">
+      <h2>5. Weitere Zeichen &amp; Operatoren</h2>
+      <dl>
+        <dt>$/" "</dt><dd>Tabulator</dd>
+        <dt>+par</dt><dd>Push auf Stack (kein Wert → pop eax)</dd>
+        <dt>var ++</dt><dd>Inkrement</dd>
+        <dt>(.)# var value text reg</dt><dd>Variable bei Qwix registrieren</dd>
+        <dt>; text</dt><dd>Kommentar</dd>
+        <dt>~text(~)</dt><dd>Direktes NASM</dd>
+        <dt>{0-9+/math}</dt><dd>Mathe-Ausdrücke (tinyexpr)</dd>
+      </dl>
+    </section>
+
+    <section id="beispiele">
+      <h2>Beispiele</h2>
+
+      <div class="example">
+        <div class="example-title">Simple MessageBox</div>
+        <div class="code-card">
+<pre><code>include '_MessageBoxA@16'
+title. "Title"
+msg. "Hello World!"
++0 +title +msg +0 ::'_MessageBoxA@16'</code></pre>
+        </div>
+      </div>
+
+      <div class="example">
+        <div class="example-title">Simple random number</div>
+        <div class="code-card">
+<pre><code>include [randint] ; including it 
+randvar. {0} ; Var to load
+randvar randint 1 10 ; Getting random num 
+fmt. "Random number: %d" ; Formated string
+print #randvar fmt</code></pre>
+        </div>
+      </div>
+
+      <div class="example">
+        <div class="example-title">Simple prompt + math</div>
+        <div class="code-card">
+<pre><code>password. "mypassword" ; Defieniere Password
+msg. "Enter Password: " ; Definiere Eingabeaufforderungs Nachricht
+
+prompt. input msg ; Eingabeaufforderung
+input & password ? secret* ; Vergleiche eingegebenes Passwort mit dem definierten Passwort falls gleich geht es zu secret sonst beendet es
+
+access. "Access granted! Number is: %d" ; %d wird durch die berechnete Zahl ersetzt
+secret.:
+    a. {sqrt(3^2+4^2)} ; Berechne die Quadratwurzel von 3^2 + 4^2
+    print #a access ; Drucke die Zugangsbestätigung mit der berechneten Zahl</code></pre>
+        </div>
+      </div>
+
+    </section>
+
+    <section id="window">
+      <h2>Window Beispiel</h2>
+      <div class="code-card">
+        <pre><code>include '_GetModuleHandleA@4'
+include '_RegisterClassExA@4'
+include '_CreateWindowExA@48'
+include '_ShowWindow@8'
+include '_UpdateWindow@4'
+include '_DefWindowProcA@16'
+include '_GetMessageA@16'
+include '_TranslateMessage@4'
+include '_DispatchMessageA@4'
+include '_PostQuitMessage@4'
+include '_MessageBoxA@16'
+include '_LoadIconA@8'
+include '_LoadCursorA@8'
+include '_LoadImageA@24'
+include '_GetLastError@0'
+include '_SendMessageA@16'
+include '_sprintf'
+include [lib\\randint]
+include [lib\\morse]
+include [lib\\wincopy]
+
+; Window
+define WM_COMMAND '0x0111'
+define WM_DESTROY '0x0002'
+define WS_OVERLAPPEDWINDOW '0x00CF0000'
+define WS_BORDER '0x00800000'
+define ES_LEFT '0x0000'
+define SW_SHOWNORMAL '1'
+
+className. "WindowClass"
+windowTitle. "You shall not pass"
+|wc '48'
+|msg '48'
+
+; Button
+define BUTTON_ID '1001'
+define WS_CHILD '0x40000000'
+define WS_VISIBLE '0x10000000'
+define BS_PUSHBUTTON '0x00000000'
+
+buttonClass. "BUTTON"
+buttonText. "Enter"
+
+; Edit
+define WM_GETTEXT '0x000D'
+
+editClass. "EDIT"
+|hEdit 1
+|editMsg 128
+
+; Sources
+iconPath. "Path\\to\\icon.ico"
+cursorPath. "Path\\to\\cursor.cur"
+
+; Secret
+password. "qwix"
+|secretMsg 64
+secretFmt. "Magicnumber: %d"
+magicNum. {0}
+
+; Setup Window
++{0} ::'_GetModuleHandleA@4' mov esi eax
+mov #[wc] 48
+mov #[wc+4] 0
+mov #[wc+8] wndProc
+mov #[wc+12] 0
+mov #[wc+16] 0
+mov '[wc+20]' eax
++'0x10' +32 +32 +1 +iconPath +0 ::'_LoadImageA@24' ; Load icon
+try eax eax ? checkE
+mov #[wc+24] eax
+mov #[wc+44] eax
++'0x10' +32 +32 +2 +cursorPath +0 ::'_LoadImageA@24' ; Load cursor
+try eax eax ? checkE
+mov #[wc+28] eax
+mov #[wc+32] 6
+mov #[wc+36] 0
+mov #[wc+40] className
+
+; Register class
++wc ::'_RegisterClassExA@4'
+try eax eax ? checkE
+
+; Create Window
++0 +esi +0 +0 +300 +400 +100 +100 +WS_OVERLAPPEDWINDOW
++windowTitle +className +0 ::'_CreateWindowExA@48' mov ebx eax
+
+; Display window and update window
++'SW_SHOWNORMAL' +ebx ::'_ShowWindow@8'
++ebx ::'_UpdateWindow@4'
+
+; --- Create Button ---
++0 +esi +BUTTON_ID +ebx +50 +50 +100 +100 +'WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON' +buttonText +buttonClass +0
+::'_CreateWindowExA@48'
+::'_CreateWindowExA@48'
+; --- Create Edit ---
++0 +esi +0 +ebx +20 +200 +50 +50 +'WS_CHILD | WS_VISIBLE | WS_BORDER | ES_LEFT' +0 +editClass +0
+::'_CreateWindowExA@48' mov '[hEdit]' eax
+:msgloop
+
+msgloop.:
+    +0 +0 +0 +msg ::'_GetMessageA@16'
+    try eax eax ? checkE
+    +msg ::'_TranslateMessage@4'
+    +msg ::'_DispatchMessageA@4'
+    :msgloop
+
+wndProc.:
+    mov eax '[esp+8]'
+    .eax % WM_COMMAND ? event
+    .eax % WM_DESTROY ! defproc
+    +0 ::'_PostQuitMessage@4'
+    xor eax eax / 16
+
+event.:
+    mov eax '[esp+12]'
+    .eax % BUTTON_ID ? buttonCmd ! defproc
+    xor eax eax / 16
+
+buttonCmd.:
+    +editMsg +128 +WM_GETTEXT +#hEdit ::'_SendMessageA@16'
+    editMsg & password ? secret
+    +editMsg ::morse clr 4 mov ebx eax
+    +0 +windowTitle +ebx +0 ::'_MessageBoxA@16'
+    +ebx ::wincopy
+    xor eax eax / 16
+
+secret.:
+    magicNum randint 1 10
+    +#magicNum +secretFmt +secretMsg ::_sprintf clr 12
+    +0 +windowTitle +secretMsg +0 ::'_MessageBoxA@16'
+
+defproc.:
+    mov eax '[esp+4]'
+    mov ecx '[esp+8]'
+    mov edx '[esp+12]'
+    mov ebx '[esp+16]'
+    +ebx +edx +ecx +eax
+    ::'_DefWindowProcA@16' / 16
+
+; ------- ERROR ---------
+errTitle. "Error"
+errFmt. "[Error] Code: %d"
+|errCode 1
+|errStr '12'
+|errMsg 64
+
+checkE.:
+    ::'_GetLastError@0' mov '[errCode]' eax
+    .eax % 0 ! error*
+
+error.:
+    print #errCode errFmt
+    +#errCode +errFmt +errMsg ::_sprintf clr 12
+    +'0x00000010' +errTitle +errMsg +0 ::'_MessageBoxA@16'*
+        </code></pre>
+      </div>
+
+    </section>
+
+    <footer>
+      Qwix
+    </footer>
+  </div>
+</body>
+</html>
