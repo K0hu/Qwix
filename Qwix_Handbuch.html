@@ -174,10 +174,10 @@ print #randvar fmt</code></pre>
 <pre><code class="language-qwix">password. "mypassword" ; Defieniere Password
 msg. "Enter Password: " ; Definiere Eingabeaufforderungs Nachricht
 
-prompt. input msg ; Eingabeaufforderung
+prompt input msg ; Eingabeaufforderung
 input & password ? secret* ; Vergleiche eingegebenes Passwort mit dem definierten Passwort falls gleich geht es zu secret sonst beendet es
 
-access. "Access granted! Number is: %d" ; %d wird durch die berechnete Zahl ersetzt
+access. "Access granted! Num: %d" ; %d wird durch die berechnete Zahl ersetzt
 secret.:
     a. {sqrt(3^2+4^2)} ; Berechne die Quadratwurzel von 3^2 + 4^2
     print #a access ; Drucke die Zugangsbestätigung mit der berechneten Zahl</code></pre>
