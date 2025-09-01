@@ -9,6 +9,8 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/vs2015.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
   <script>hljs.highlightAll();</script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/vs2015.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
   <style>
     :root{
       --accent:#1F6FEB;
@@ -21,6 +23,12 @@
       font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
       color:var(--text);
     }
+    .hljs-keyword { color: #1F6FEB; font-weight: bold; }
+    .hljs-string { color: #E5C07B; }
+    .hljs-comment { color: #6A737D; font-style: italic; }
+    .hljs-variable { color: #C678DD; }
+    .hljs-label { color: #61AFEF; }
+    .hljs-operator { color: #56B6C2; }
     body{margin:0; background:linear-gradient(180deg,#f6fbff 0%, #ffffff 100%);}
     .page{max-width:920px;margin:36px auto;padding:28px;}
     .header{display:flex;align-items:center;gap:16px}
@@ -142,7 +150,7 @@
       <div class="example">
         <div class="example-title">Simple MessageBox</div>
         <div class="code-card">
-<pre><code>include '_MessageBoxA@16'
+<pre><code class="language-qwix">include '_MessageBoxA@16'
 title. "Title"
 msg. "Hello World!"
 +0 +title +msg +0 ::'_MessageBoxA@16'</code></pre>
@@ -152,7 +160,7 @@ msg. "Hello World!"
       <div class="example">
         <div class="example-title">Simple random number</div>
         <div class="code-card">
-<pre><code>include [randint] ; including it 
+<pre><code class="language-qwix">include [randint] ; including it 
 randvar. {0} ; Var to load
 randvar randint 1 10 ; Getting random num 
 fmt. "Random number: %d" ; Formated string
@@ -163,7 +171,7 @@ print #randvar fmt</code></pre>
       <div class="example">
         <div class="example-title">Simple prompt + math</div>
         <div class="code-card">
-<pre><code>password. "mypassword" ; Defieniere Password
+<pre><code class="language-qwix">password. "mypassword" ; Defieniere Password
 msg. "Enter Password: " ; Definiere Eingabeaufforderungs Nachricht
 
 prompt. input msg ; Eingabeaufforderung
@@ -181,7 +189,7 @@ secret.:
     <section id="window">
       <h2>Window Beispiel</h2>
       <div class="code-card">
-        <pre><code>include '_GetModuleHandleA@4'
+        <pre><code class="language-qwix">include '_GetModuleHandleA@4'
 include '_RegisterClassExA@4'
 include '_CreateWindowExA@48'
 include '_ShowWindow@8'
@@ -345,5 +353,61 @@ error.:
       Qwix
     </footer>
   </div>
+
+<script>
+hljs.registerLanguage('qwix', function(hljs) {
+  return {
+    name: 'Qwix',
+    case_insensitive: false,
+    keywords: {
+      keyword: 'prompt print atoi include randint define mov xor try clr'
+    },
+    contains: [
+      // Kommentare
+      hljs.COMMENT(';', '$'),
+
+      // Strings
+      {
+        className: 'string',
+        begin: '"', end: '"',
+        contains: [{ begin: '\\\\.' }] // Escapes
+      },
+      {
+        className: 'string',
+        begin: "'", end: "'"
+      },
+
+      // Zahlen
+      hljs.NUMBER_MODE,
+
+      // Funktionen (name.:)
+      {
+        className: 'function',
+        begin: '\\b[a-zA-Z_][a-zA-Z0-9_]*\\.:', relevance: 10
+      },
+
+      // Labels (:name)
+      {
+        className: 'label',
+        begin: ':[a-zA-Z_][a-zA-Z0-9_]*'
+      },
+
+      // Operatoren
+      {
+        className: 'operator',
+        begin: '[><=!%&?+*./:-]'
+      },
+
+      // Variablen vor einem Punkt (title.)
+      {
+        className: 'variable',
+        begin: '\\b[a-zA-Z_][a-zA-Z0-9_]*(?=\\.)'
+      }
+    ]
+  };
+});
+
+hljs.highlightAll();
+</script>
 </body>
 </html>
