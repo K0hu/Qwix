@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <unistd.h>
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1107,6 +1108,10 @@ int main(int argc, char *argv[]) {
     Token *all_tokens = malloc(sizeof(Token) * 10); // All the tokens
     int all_tokens_capacity = 10; // Total token capacity
     char error[256];
+    char asmFile[256];
+    char exeFile[256];
+    char objFile[512];
+    char output[128];
 
     /* FILENAME */
     const char *filename = NULL; 
@@ -1131,7 +1136,7 @@ int main(int argc, char *argv[]) {
     // Help if filename was not found
     if (!filename) {
         fprintf(stderr, "Usage: %s <inputfile> [-tok] [-asm] [-nw]", argv[0]);
-        return 1;
+        goto cleanup;
     }
 
     /* OPEN FILE */
@@ -1141,7 +1146,7 @@ int main(int argc, char *argv[]) {
         errno = ENOENT;
         snprintf(error, sizeof(error), RED "Error: Failed to open file | '%S'" RESET, filename);
         perror(error);
-        return 1;
+        goto cleanup;
     } 
 
     /* Maximum capacity of the file */
@@ -1179,10 +1184,6 @@ int main(int argc, char *argv[]) {
     char* code = parser(all_tokens, &total_token_count, &incl, noWarning, ri, bss); // NASM-code
 
     if (code == NULL) {goto cleanup;}
-
-    char asmFile[256];
-    char exeFile[256];
-    char output[128];
     if (opt) {
         snprintf(output, sizeof(output), "%s", "");
     } else {
@@ -1207,7 +1208,7 @@ int main(int argc, char *argv[]) {
             fclose(datei);
             errno = EINVAL;
             perror(RED "Error: File was not created" RESET);
-            return 1;
+            goto cleanup;
         }
         fputs(code, datei);  // Code in Datei schreiben
         fclose(datei);
@@ -1234,6 +1235,7 @@ int main(int argc, char *argv[]) {
 
         char nasmCmd[1024]; 
         char golinkCmd[1024];
+        snprintf(objFile, sizeof(objFile), "%s.obj", name);
 
         snprintf(nasmCmd, sizeof(nasmCmd), "nasm -f win32 \"%s\" -o \"%s.obj\"", asmFile, name);
         if (noconsole) {
@@ -1252,9 +1254,6 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, RED "Error: GoLink linking failed\n" RESET);
             goto cleanup;
         }
-
-        char objFile[512];
-        snprintf(objFile, sizeof(objFile), "%s.obj", name);
         remove(objFile);
         remove(asmFile);
 
@@ -1262,7 +1261,6 @@ int main(int argc, char *argv[]) {
         srand((unsigned int) time(NULL));
         char uuid_str[33];  // 32 Zeichen + Null-Terminierung
         generate_random_string(uuid_str, 32);
-        char objFile[512];
         snprintf(objFile, sizeof(objFile), "%s\\%s.obj", getenv("TEMP"), uuid_str);
         snprintf(asmFile, sizeof(asmFile), "%s\\%s.asm", getenv("TEMP"), uuid_str);
         snprintf(exeFile, sizeof(exeFile), "%s\\%s.exe", getenv("TEMP"), uuid_str);
@@ -1301,6 +1299,9 @@ int main(int argc, char *argv[]) {
     }
 
 cleanup:
+    if (access(asmFile, F_OK) == 0) remove(asmFile);
+    if (access(objFile, F_OK) == 0) remove(objFile);
+    if (access(exeFile, F_OK) == 0) remove(exeFile);
     if (all_tokens) free(all_tokens);
     if (inputs) {
         for (int i = 0; i < count; i++) {
