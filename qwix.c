@@ -383,6 +383,11 @@ void replace_all_vars(char *expr, Variable *vars, int var_count) {
     } while (replaced);
 }
 
+char* eval(char *expr) {
+    // Math
+}
+
+
 // Logic for the tokens, creates the NASM-code
 char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, bool bssb) {
     char* code = malloc(1); 
