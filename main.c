@@ -798,62 +798,8 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                 if (tokens[i + 1].type == TOKEN_DEF) { // Wenn es eine Definition
                     if (tokens[i + 2].type == TOKEN_INT) { // Definition eines Int.
                         char* input = tokens[2 + i].name;
-                        //replace_all_vars(expr, variables, var_count);
-                        //double value = te_interp(expr, 0);
-                        char *tokens[256];
-                        int tokenCount = 0;
-
-                        for (int i = 0; input[i] != '\0'; ) {
-                            // Leerzeichen überspringen
-                            if (isspace((unsigned char)input[i])) {
-                                i++;
-                                continue;
-                            }
-
-                            // Zahlen erkennen
-                            if (isdigit((unsigned char)input[i])) {
-                                int start = i;
-                                while (isdigit((unsigned char)input[i])) i++;
-                                int len = i - start;
-                                tokens[tokenCount] = malloc(len + 1);
-                                strncpy(tokens[tokenCount], &input[start], len);
-                                tokens[tokenCount][len] = '\0';
-                                tokenCount++;
-                                continue;
-                            }
-
-                            // Namen (Buchstaben oder Unterstrich, danach auch Ziffern)
-                            if (isalpha((unsigned char)input[i]) || input[i] == '_') {
-                                int start = i;
-                                while (isalnum((unsigned char)input[i]) || input[i] == '_') i++;
-                                int len = i - start;
-                                tokens[tokenCount] = malloc(len + 1);
-                                strncpy(tokens[tokenCount], &input[start], len);
-                                tokens[tokenCount][len] = '\0';
-                                tokenCount++;
-                                continue;
-                            }
-
-                            // Operatoren +, -, *, /
-                            if (strchr("+-*/", input[i])) {
-                                tokens[tokenCount] = malloc(2);
-                                tokens[tokenCount][0] = input[i];
-                                tokens[tokenCount][1] = '\0';
-                                tokenCount++;
-                                i++;
-                                continue;
-                            }
-
-                            // Falls unbekanntes Zeichen
-                            printf(FETT "Warning: " RESET "Unhandled token [" MAGENTA "%d" RESET "]\n", EOF_counter);
-                            i++;
-                        }
-                        
-                        double value;
-                        for (int j = 0; j < tokenCount; j++) {
-                            // RECHNUNG in value machen
-                            free(tokens[j]);
-                        }
+                        replace_all_vars(expr, variables, var_count);
+                        double value = te_interp(expr, 0);
 
                         if (!is_in_array(variables, var_count, t.name)) {
                             char formatted[512];
