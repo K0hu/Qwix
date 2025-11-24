@@ -1,0 +1,75 @@
+include 'GlobalMemoryStatusEx'
+include '_sprintf'
+include '_MessageBoxA@16'
+include 'RtlGetVersion'
+
+.~meminfo: dq 0,0,0,0,0,0,0,0
+.~vendor db 12 dup(0)
+.~cpu_name db 48 dup(0)
+.~buffer db 512 dup(0) 
+
+.~fmt_all db "CPU Vendor: %.12s",10
+.~db "CPU Name: %.48s",10
+.~db "Total RAM: %u MB",10
+.~db "Available RAM: %u MB",10
+.~db "Total Virtual Memory: %u MB",10
+.~db "Available Virtual Memory: %u MB",10,0
+
+mov eax '0x80000002' ~cpuid
+mov '[cpu_name]' eax
+mov '[cpu_name+4]' ebx
+mov '[cpu_name+8]' ecx
+mov '[cpu_name+12]' edx
+
+mov eax '0x80000003' ~cpuid
+mov '[cpu_name+16]' eax
+mov '[cpu_name+20]' ebx
+mov '[cpu_name+24]' ecx
+mov '[cpu_name+28]' edx
+
+mov eax '0x80000004' ~cpuid
+mov '[cpu_name+32]' eax
+mov '[cpu_name+36]' ebx
+mov '[cpu_name+40]' ecx
+mov '[cpu_name+44]' edx
+
+mov eax 0 ~cpuid
+mov '[vendor]' ebx
+mov '[vendor+4]' edx
+mov '[vendor+8]' ecx
+
+mov #[meminfo] 64
++meminfo ::GlobalMemoryStatusEx
+
+define DIV_MB 1048576
+total_ram_mb. {0}
+avail_ram_mb. {0}
+total_virt_mb. {0}
+avail_virt_mb. {0}
+
+mov edx 'dword [meminfo+12]'
+mov eax 'dword [meminfo+8]'
+mov ecx DIV_MB ~div ecx
+mov '[total_ram_mb]' eax
+
+mov edx 'dword [meminfo+20]'
+mov eax 'dword [meminfo+16]'
+mov ecx DIV_MB ~div ecx
+mov '[avail_ram_mb]' eax
+
+mov edx 'dword [meminfo+44]'
+mov eax 'dword [meminfo+40]'
+mov ecx DIV_MB ~div ecx
+mov '[total_virt_mb]' eax
+
+mov edx 'dword [meminfo+52]'
+mov eax 'dword [meminfo+48]'
+mov ecx DIV_MB ~div ecx
+mov '[avail_virt_mb]' eax
+
++#[avail_virt_mb] +#[total_virt_mb] +#[avail_ram_mb] +#[total_ram_mb] 
++cpu_name +vendor +fmt_all +buffer ::_sprintf
+
+title. "System Infos"
++{0} +title +buffer +{0} ::'_MessageBoxA@16'
+

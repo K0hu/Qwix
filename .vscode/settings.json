@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "*.qwr": "qwr",
+        "stdbool.h": "c"
+    }
+}
