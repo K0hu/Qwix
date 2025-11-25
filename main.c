@@ -266,14 +266,12 @@ Token get_next_token(const char **input) {
 
     if (**input == '[') {
         char quote = ']';
-        (*input)++;
         int i = 0;
         char buffer[128] = {0};
         while (**input != quote && **input != '\0' && i < 127) {
             buffer[i++] = **input;
             (*input)++;
         }
-        if (**input == quote) (*input)++;
         Token t = { TOKEN_ECLAM, 0 };
         strncpy(t.name, buffer, 127);
         return t;
@@ -796,10 +794,16 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
             case TOKEN_CLAMP: break;
             case TOKEN_UNKNOWN:
                 if (tokens[i + 1].type == TOKEN_DEF) { // Wenn es eine Definition
-                    if (tokens[i + 2].type == TOKEN_INT) { // Definition eines Int.
-                        char* input = tokens[2 + i].name;
-                        replace_all_vars(expr, variables, var_count);
-                        double value = te_interp(expr, 0);
+                    if (tokens[i + 2].dif == INT) { // Definition eines Int.
+
+                        double value;
+                        if (tokens[i + 1].type == TOKEN_INT) {    
+                            char* input = tokens[2 + i].name;
+                            replace_all_vars(expr, variables, var_count);
+                            value = te_interp(expr, 0);
+                        } else {
+                            value = tokens[i + 1].value;
+                        }
 
                         if (!is_in_array(variables, var_count, t.name)) {
                             char formatted[512];
