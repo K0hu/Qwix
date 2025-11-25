@@ -29,8 +29,8 @@ _start:
     call _printf
     add esp, 8
     
-    mov eax, 3
     mov eax, [a]
+    sub eax, 3
     mov [a], eax
     push dword [a]
     push fmt2
