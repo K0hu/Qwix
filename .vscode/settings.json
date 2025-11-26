@@ -2,6 +2,7 @@
     "files.associations": {
         "*.qwr": "qwr",
         "stdbool.h": "c",
-        "typeinfo": "c"
+        "typeinfo": "c",
+        "cmath": "c"
     }
 }

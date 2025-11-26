@@ -7,6 +7,7 @@
 #include <time.h>
 #include <libgen.h>
 #include "tinyexpr.h"
+#include <math.h>
 
 #define MAX_LINES 1000
 #define MAX_LINE_LEN 1000
@@ -28,6 +29,12 @@ char* append(char* str, const char* add_str) {
     }
     strcpy(new_str + len, add_str);  // Append the new string
     return new_str;
+}
+
+
+bool is_integer(double value) {
+    const double eps = 1e-9;
+    return fabs(value - round(value)) < eps;
 }
 
 // Structure of Token types
@@ -60,7 +67,9 @@ typedef enum {
     TOKEN_ASM,
     TOKEN_BSS,
     TOKEN_ECLAM,
-    TOKEN_ARG
+    TOKEN_ARG,
+    TOKEN_FLOAT,
+    TOKEN_DOUBLE
 } TokenType;
 
 // Type of variables
@@ -147,6 +156,20 @@ Token get_next_token(const char **input) {
     }
 
     while (isspace(**input)) (*input)++;
+
+    
+    char *end;
+    double val = strtod(*input, &end);
+
+    if (end != *input) {
+        // Ein Float / Double wurde erfolgreich gelesen!
+        Token t = { TOKEN_DOUBLE, val };
+        snprintf(t.name, sizeof(t.name), "%g", val);
+        t.dif = DOUBLE;
+        
+        *input = end;                     // Inputpointer weiterbewegen!
+        return t;
+    }
 
     if (**input == '\0') {
         return (Token){ TOKEN_EOF, 0 };
@@ -806,6 +829,8 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
             case TOKEN_DEF: break;
             case TOKEN_STR: break;
             case TOKEN_ARG: break;
+            case TOKEN_DOUBLE: break;
+            case TOKEN_FLOAT: break;
             case TOKEN_BSS: 
                 if (tokens[i + 2].dif == INT) {
                     snprintf(formatted, sizeof(formatted), "%s resd %d\n    ", tokens[i + 1].name, tokens[i + 2].value);
@@ -818,8 +843,14 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
             case TOKEN_CLAMP: break;
             case TOKEN_UNKNOWN:
                 if (tokens[i + 1].type == TOKEN_DEF) { // Wenn es eine Definition
-                    if (tokens[i + 2].dif == INT) { // Definition eines Int.
+                    if (tokens[i + 2].dif == DOUBLE) {
+                        char formatted[512];
+                        snprintf(formatted, sizeof(formatted), "%s dq %s\n    ", t.name, tokens[i + 2].name);
+                        data = append(data, formatted);
+                        variables = addVar(variables, &var_count, t.name, (int)value, "");
+                    } else if (tokens[i + 2].dif == INT) { // Definition eines Int.
                         double value;
+                        char formatted[512];
                         if (tokens[i + 1].type == TOKEN_INT) {    
                             char* input = tokens[2 + i].name;
                             replace_all_vars(expr, variables, var_count);
@@ -829,24 +860,24 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                         }
 
                         if (!is_in_array(variables, var_count, t.name)) {
-                            char formatted[512];
-                            snprintf(formatted, sizeof(formatted), "%s dd %d\n    ", t.name, (int)value);
+                            snprintf(formatted, sizeof(formatted), floor(value) == value ? "%s dd %d\n    " : "%s dq %d\n    ", t.name, floor(value) == value ? (int)value : value);
                             data = append(data, formatted);
                             variables = addVar(variables, &var_count, t.name, (int)value, "");
                         } else {
-                            char formatted[512];
-                            snprintf(formatted, sizeof(formatted), "mov dword [%s], %d\n    \n    ", t.name, (int)value);  
-                            switch (current_section)
-                            {
-                            case 1:
-                                jmp = append(jmp, formatted);
-                                break;
-                            
-                            default:
-                                code = append(code, formatted);
-                                break;
-                            }
-                            updateVar(variables, var_count, t.name, (int)value, "");
+                            if (floor(value) == value) {
+                                snprintf(formatted, sizeof(formatted), "mov dword [%s], %d\n    \n    ", t.name, (int)value);  
+                                switch (current_section)
+                                {
+                                case 1:
+                                    jmp = append(jmp, formatted);
+                                    break;
+                                
+                                default:
+                                    code = append(code, formatted);
+                                    break;
+                                }
+                                updateVar(variables, var_count, t.name, (int)value, "");
+                            }  
                         }
 
                     } else if (tokens[i + 2].dif == STR) {
