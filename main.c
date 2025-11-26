@@ -59,7 +59,8 @@ typedef enum {
     TOKEN_END,
     TOKEN_ASM,
     TOKEN_BSS,
-    TOKEN_ECLAM
+    TOKEN_ECLAM,
+    TOKEN_ARG
 } TokenType;
 
 // Type of variables
@@ -176,7 +177,7 @@ Token get_next_token(const char **input) {
     if (**input == '|') { (*input)++; return (Token){ TOKEN_BSS, 0 }; }
     if (**input == '.') { (*input)++; return (Token){ TOKEN_DEF, 0 }; }
     if (**input == '/') { (*input)++; return (Token){ TOKEN_RET, 0 }; }
-    if (**input == '$' || **input == '\t') { (*input)++; return (Token){ TOKEN_TAB, 0 }; }
+    if (**input == '\t') { (*input)++; return (Token){ TOKEN_TAB, 0 }; }
     if (**input == '%') { (*input)++; return (Token){ TOKEN_CMP, 0 }; }
     if (**input == '&') { (*input)++; return (Token){ TOKEN_SCMP, 0 }; }
     if (**input == '?') { (*input)++; return (Token){ TOKEN_EQUAL, 0 }; }
@@ -213,6 +214,18 @@ Token get_next_token(const char **input) {
         Token t = { TOKEN_COM, 0 };
         strncpy(t.name, buffer, 127);
 
+        return t;
+    }
+
+    if (**input == '$') {
+        (*input)++;
+        int value = 0;
+        if (isdigit(**input)) {
+            value = (value * 10 + (**input - '0')) * 4;
+            (*input)++;
+        }
+        Token t = { TOKEN_ARG, value };
+        snprintf(t.name, sizeof(t.name), "[esp+%d]", value);
         return t;
     }
 
@@ -575,7 +588,13 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                 switch (current_section)
                 {
                 case 1:
-                    if (tokens[i + 1].type == TOKEN_NUMBER) {
+                    if (tokens[i + 2].type == TOKEN_ECLAM || tokens[i + 2].type == TOKEN_ARG) {
+                        snprintf(formatted, sizeof(formatted), "mov eax, %s\n    ", tokens[i + 2].name);
+                        jmp = append(jmp, formatted);
+                    } if (tokens[i + 1].type == TOKEN_ECLAM || tokens[i + 1].type == TOKEN_ARG) {
+                        snprintf(formatted, sizeof(formatted), "mov eax, %s\n    ret\n    ", tokens[i + 1].name);
+                        jmp = append(jmp, formatted);
+                    } else if (tokens[i + 1].type == TOKEN_NUMBER) {
                         snprintf(formatted, sizeof(formatted), "ret %d\n    ", tokens[i + 1].value);
                         jmp = append(jmp, formatted);
                     } else {
@@ -786,6 +805,7 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                 break;
             case TOKEN_DEF: break;
             case TOKEN_STR: break;
+            case TOKEN_ARG: break;
             case TOKEN_BSS: 
                 if (tokens[i + 2].dif == INT) {
                     snprintf(formatted, sizeof(formatted), "%s resd %d\n    ", tokens[i + 1].name, tokens[i + 2].value);
@@ -799,7 +819,6 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
             case TOKEN_UNKNOWN:
                 if (tokens[i + 1].type == TOKEN_DEF) { // Wenn es eine Definition
                     if (tokens[i + 2].dif == INT) { // Definition eines Int.
-
                         double value;
                         if (tokens[i + 1].type == TOKEN_INT) {    
                             char* input = tokens[2 + i].name;
@@ -855,6 +874,10 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                         snprintf(formatted, sizeof(formatted), "%s db %s dup(0)\n    ", t.name, tokens[i + 3].name);
                         data = append(data, formatted);
                         variables = addVar(variables, &var_count, t.name, atoi(tokens[i + 3].name), tokens[i + 3].name);
+                    } else if (tokens[i + 2].type == TOKEN_ECLAM) {
+                        snprintf(formatted, sizeof(formatted), "%s dd %s\n    ", t.name, tokens[i + 2].name);
+                        data = append(data, formatted);
+                        variables = addVar(variables, &var_count, t.name, 0, tokens[i + 2].name);
                     }
                 }
                 /*  CMD/Built-ins  */

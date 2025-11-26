@@ -1,9 +1,6 @@
 section .data
-    a dd 0
-    b dd 0
-    c dd 3
+    d dd 0, 1, 2
     fmt db "Deine Zahl ist: %d", 10, 0
-    fmt2 db "Deine neue Zahl: %d", 0
     
 section .text
     global _start
@@ -12,34 +9,25 @@ section .text
 
 
 _start:
-    mov eax, [a]
-    add eax, 5
-    mov [a], eax
-    mov eax, [a]
-    mov ebx, 3
-    mul ebx
-    mov [b], eax
-    mov eax, [b]
-    mov ebx, [c]
-    xor edx, edx
-    div ebx
-    mov [a], eax
-    push dword [a]
+    push dword [d+2*4]
+    push dword [d+1*4]
+    call func
+    mov [d+0*4], eax
+    push dword [d + 0*4]
     push fmt
-    call _printf
-    add esp, 8
-    
-    mov eax, 3
-    mov eax, [a]
-    mov [a], eax
-    push dword [a]
-    push fmt2
     call _printf
     add esp, 8
     
     jmp exit8
 
 
+func:
+    mov eax, [esp+8]
+    add eax, 5
+    mov [esp+8], eax
+    mov eax, [esp+8]
+    ret 8
+    
 exit8:
     push 0
     call _ExitProcess@4

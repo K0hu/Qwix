@@ -1,15 +1,10 @@
-a. 0
-add (a) 5. (a)
-b. 0
-mul (a) 3. (b)
-c. 3
-div (b) (c). (a)
+d. [0, 1, 2]
+func.:
+    add $2 5. $2
+    / 8 $2
+
++#[d+2*4] +#[d+1*4] ::func
+mov (d+0*4) eax
 
 fmt. "Deine Zahl ist: %d\n"
-print #a fmt
-
-sub (a) 3. (a)
-
-
-fmt2. "Deine neue Zahl: %d"
-print #a fmt2
+print #[d + 0*4] fmt
