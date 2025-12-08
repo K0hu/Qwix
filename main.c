@@ -848,6 +848,11 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                         snprintf(formatted, sizeof(formatted), "%s dq %s\n    ", t.name, tokens[i + 2].name);
                         data = append(data, formatted);
                         variables = addVar(variables, &var_count, t.name, (int)value, "");
+                    } else if (tokens[i + 2].dif == FLOAT) {
+                        char formatted[512];
+                        snprintf(formatted, sizeof(formatted), "%s dd %s\n    ", t.name, tokens[i + 2].name);
+                        data = append(data, formatted);
+                        variables = addVar(variables, &var_count, t.name, (int)value, "");
                     } else if (tokens[i + 2].dif == INT) { // Definition eines Int.
                         double value;
                         char formatted[512];
@@ -1091,10 +1096,18 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                         break;
                     } 
                 } else if (!strcmp(t.name, "add")) {
-                    if (tokens[i + 3].type == TOKEN_DEF) {
-                        snprintf(formatted, sizeof(formatted), "mov eax, %s\n    add eax, %s\n    mov %s, eax\n    ", tokens[i + 1].name, tokens[i + 2].name, tokens[i + 4].name);
+                    if (!strcmp(tokens[i - 1], "dq")) {
+                        if (tokens[i + 3].type == TOKEN_DEF) {
+                            snprintf(formatted, sizeof(formatted), "movsd xmm0, %s\n    movsd xmm1, %s\n    addsd xmm0, xmm1\n    movsd %s, xmm0\n    ", tokens[i + 1].name, tokens[i + 2].name, tokens[i + 4].name);
+                        } else {
+                            snprintf(formatted, sizeof(formatted), "movsd xmm0, %s\n    movsd xmm1, %s\n    addsd xmm0, xmm1\n    ", tokens[i + 1].name, tokens[i + 2].name);
+                        }
                     } else {
-                        snprintf(formatted, sizeof(formatted), "mov eax, %s\n    add eax, %s\n    ", tokens[i + 1].name, tokens[i + 2].name);
+                        if (tokens[i + 3].type == TOKEN_DEF) {
+                            snprintf(formatted, sizeof(formatted), "mov eax, %s\n    add eax, %s\n    mov %s, eax\n    ", tokens[i + 1].name, tokens[i + 2].name, tokens[i + 4].name);
+                        } else {
+                            snprintf(formatted, sizeof(formatted), "mov eax, %s\n    add eax, %s\n    ", tokens[i + 1].name, tokens[i + 2].name);
+                        }   
                     }
 
                     switch (current_section)
@@ -1108,10 +1121,18 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                     }
                     i += 3;
                 } else if (!strcmp(t.name, "sub")) {
-                    if (tokens[i + 3].type == TOKEN_DEF) {
-                        snprintf(formatted, sizeof(formatted), "mov eax, %s\n    sub eax, %s\n    mov %s, eax\n    ", tokens[i + 1].name, tokens[i + 2].name, tokens[i + 4].name);
-                    } else {
-                        snprintf(formatted, sizeof(formatted), "mov eax, %s\n    sub eax, %s\n    ", tokens[i + 1].name, tokens[i + 2].name);
+                    if (!strcmp(tokens[i - 1], "dq")) {
+                        if (tokens[i + 3].type == TOKEN_DEF) {
+                            snprintf(formatted, sizeof(formatted), "movsd xmm0, %s\n    movsd xmm1, %s\n    subsd xmm0, xmm1\n    movsd %s, xmm0\n    ", tokens[i + 1].name, tokens[i + 2].name, tokens[i + 4].name);
+                        } else {
+                            snprintf(formatted, sizeof(formatted), "movsd xmm0, %s\n    movsd xmm1, %s\n    subsd xmm0, xmm1\n    ", tokens[i + 1].name, tokens[i + 2].name);
+                        }
+                    else {
+                        if (tokens[i + 3].type == TOKEN_DEF) {
+                            snprintf(formatted, sizeof(formatted), "mov eax, %s\n    sub eax, %s\n    mov %s, eax\n    ", tokens[i + 1].name, tokens[i + 2].name, tokens[i + 4].name);
+                        } else {
+                            snprintf(formatted, sizeof(formatted), "mov eax, %s\n    sub eax, %s\n    ", tokens[i + 1].name, tokens[i + 2].name);
+                        }
                     }
                     
                     switch (current_section)
@@ -1125,10 +1146,18 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                     }
                     i += 3;
                 }  else if (!strcmp(t.name, "mul")) {
-                    if (tokens[i + 3].type == TOKEN_DEF) {
-                        snprintf(formatted, sizeof(formatted), "mov eax, %s\n    mov ebx, %s\n    mul ebx\n    mov %s, eax\n    ", tokens[i + 1].name, tokens[i + 2].name, tokens[i + 4].name);
-                    } else {
-                        snprintf(formatted, sizeof(formatted), "mov eax, %s\n    mov ebx, %s\n    mul ebx\n    ", tokens[i + 1].name, tokens[i + 2].name);
+                    if (!strcmp(tokens[i - 1], "dq")) {
+                        if (tokens[i + 3].type == TOKEN_DEF) {
+                            snprintf(formatted, sizeof(formatted), "movsd xmm0, %s\n    movsd xmm1, %s\n    mulsd xmm0, xmm1\n    movsd %s, xmm0\n    ", tokens[i + 1].name, tokens[i + 2].name, tokens[i + 4].name);
+                        } else {
+                            snprintf(formatted, sizeof(formatted), "movsd xmm0, %s\n    movsd xmm1, %s\n    mulsd xmm0, xmm1\n    ", tokens[i + 1].name, tokens[i + 2].name);
+                        }
+                    else {
+                        if (tokens[i + 3].type == TOKEN_DEF) {
+                            snprintf(formatted, sizeof(formatted), "mov eax, %s\n    mov ebx, %s\n    mul ebx\n    mov %s, eax\n    ", tokens[i + 1].name, tokens[i + 2].name, tokens[i + 4].name);
+                        } else {
+                            snprintf(formatted, sizeof(formatted), "mov eax, %s\n    mov ebx, %s\n    mul ebx\n    ", tokens[i + 1].name, tokens[i + 2].name);
+                        }
                     }
                     
                     switch (current_section)
@@ -1142,10 +1171,18 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                     }
                     i += 3;
                 } else if (!strcmp(t.name, "div")) {
-                    if (tokens[i + 3].type == TOKEN_DEF) {
-                        snprintf(formatted, sizeof(formatted), "mov eax, %s\n    mov ebx, %s\n    xor edx, edx\n    div ebx\n    mov %s, eax\n    ", tokens[i + 1].name, tokens[i + 2].name, tokens[i + 4].name);
-                    } else {
-                        snprintf(formatted, sizeof(formatted), "mov eax, %s\n    mov ebx, %s\n    xor edx, edx\n    div ebx\n    ", tokens[i + 1].name, tokens[i + 2].name);
+                    if (!strcmp(tokens[i - 1], "dq")) {
+                        if (tokens[i + 3].type == TOKEN_DEF) {
+                            snprintf(formatted, sizeof(formatted), "movsd xmm0, %s\n    movsd xmm1, %s\n    divsd xmm0, xmm1\n    movsd %s, xmm0\n    ", tokens[i + 1].name, tokens[i + 2].name, tokens[i + 4].name);
+                        } else {
+                            snprintf(formatted, sizeof(formatted), "movsd xmm0, %s\n    movsd xmm1, %s\n    divsd xmm0, xmm1\n    ", tokens[i + 1].name, tokens[i + 2].name);
+                        }
+                    else {
+                        if (tokens[i + 3].type == TOKEN_DEF) {
+                            snprintf(formatted, sizeof(formatted), "mov eax, %s\n    mov ebx, %s\n    xor edx, edx\n    div ebx\n    mov %s, eax\n    ", tokens[i + 1].name, tokens[i + 2].name, tokens[i + 4].name);
+                        } else {
+                            snprintf(formatted, sizeof(formatted), "mov eax, %s\n    mov ebx, %s\n    xor edx, edx\n    div ebx\n    ", tokens[i + 1].name, tokens[i + 2].name);
+                        }
                     }
                     
                     switch (current_section)
