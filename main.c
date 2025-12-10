@@ -832,11 +832,21 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
             case TOKEN_DOUBLE: break;
             case TOKEN_FLOAT: break;
             case TOKEN_BSS: 
+                double value;
+            	if (tokens[i + 2].type == TOKEN_INT) {
+                    char* input = tokens[2 + i].name;
+                    replace_all_vars(expr, variables, var_count);
+                    value = te_interp(expr, 0);
+                } else {
+                    value = (tokens[i + 2].dif == INT) ? tokens[i + 2].value : atoi(tokens[i + 2].name);
+                }
+                
                 if (tokens[i + 2].dif == INT) {
                     snprintf(formatted, sizeof(formatted), "%s resd %d\n    ", tokens[i + 1].name, tokens[i + 2].value);
                 }  else {
                     snprintf(formatted, sizeof(formatted), "%s resb %s\n    ", tokens[i + 1].name, tokens[i + 2].name);
                 }
+                
                 variables = addVar(variables, &var_count, tokens[i + 1].name, 0, "");
                 bss = append(bss, formatted);
                 break;
