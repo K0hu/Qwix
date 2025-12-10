@@ -27,9 +27,12 @@ Code in qwix is compiled to NASM code (then with the NASM and GoLink compiled to
 
 ## Variables
 ```|var 0-9/"0-9"```: Allocation in the .bss segment. With "" can be strings reserved. <br>
-```var. {}/0-9/""/0.9```: Declarations of variables (.data). With ```{}``` [tinyexpr](#tinyexpr) is used. 
-To declare number/doubles or strings you can simply use "", numbers (and ''). <br>
-```define var```: Equal to %define.
+```var. {}/0-9/""/0.9/[]```: Declarations of variables (.data). With ```{}``` [tinyexpr](#tinyexpr) is used. 
+To declare number/doubles or strings you can simply use "", numbers (and ''). To declare an array ```[]```, strings can not directly defined in an array, but the variables of them can be refrenced in the array. <br>
+```define var```: Equal to %define. 
+
+> [!NOTE]
+> Strings mostly not called direct, its recommend to use variables with strings.
 
 ## Operations
 - ### Tinyexpr
