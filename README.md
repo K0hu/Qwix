@@ -58,8 +58,8 @@ a%b ?jump
 - ### Return
     An return is marked as ```/``` it can have 2 args, the buffer clear value and the variable to return (```mov eax, var```: move the variable to the regester eax). Return should only be used when an function is called (```::name```).
 - ### Args
-   Args are the parameter that are pushed. In the function (```function.: ... ::function```) the args are refrenced with $num of the pushed value
-  > [!NOTE]
-  > The last pushed parameter is the first in the list (so its refrenced as ```$1```).
+   Args are the parameter that are pushed. In the function (```function.: ... ::function```) the args are refrenced with $num of the pushed value.
+> [!NOTE]
+> The last pushed parameter is the first in the list (so its refrenced as ```$1```).
   
 ...
