@@ -888,6 +888,21 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
             case TOKEN_DOUBLE: break;
             case TOKEN_FLOAT: break;
             case TOKEN_MOV: 
+                if (tokens[i - 2].type == TOKEN_VAR) {
+                    snprintf(formatted, sizeof(formatted), "mov dword [%s], %s\n    ", tokens[i - 1].name, tokens[i + 1].name);
+                } else {
+                    snprintf(formatted, sizeof(formatted), "mov %s, %s\n    ", tokens[i - 1].name, tokens[i + 1].name);
+                }
+                switch (current_section)
+                {
+                case 1:
+                    jmp = append(jmp, formatted);
+                    break;
+                
+                default:
+                    code = append(code, formatted);
+                    break;
+                }
                 break;
             case TOKEN_BSS: 
                 double value;
