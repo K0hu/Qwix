@@ -91,3 +91,8 @@ The compiler uses Nasm and GoLink to make it an executeble. It has different opt
 - ```-asm```: Output an .asm file
 - ```-nw```: Disable output of the warnings
 - ```-gop```: GoLink output enable
+
+---
+
+> [!IMPORTANT]
+> On this page is ```var```, ```name```, ```num```, ```msg```, ```args*``` (and so on) only placeholder and refrence to variables (```var```, ```msg```) or numbers (```num```)
