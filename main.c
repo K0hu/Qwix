@@ -580,7 +580,26 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                 break;
                 break;
             case TOKEN_TAB: break;
-            case TOKEN_ECLAM: break;
+            case TOKEN_ECLAM: 
+                char* rpush = malloc(1); 
+                rpush[0] = '\0';
+
+                char * push = strtok(t.name, ",");
+                while(push != NULL) {
+                    rpush = append(rpush, snprintf(formatted, sizeof(formatted), "push %s\n    ", push))
+                    push = strtok(NULL, ",")
+                }
+                switch (current_section)
+                {
+                case 1:
+                    jmp = append(jmp, formatted);
+                    break;
+                
+                default:
+                    code = append(code, formatted);
+                    break;
+                }
+                break;
             case TOKEN_POP: 
                 if ((tokens[i + 1].type == TOKEN_EOF || tokens[i + 1].type == TOKEN_COM)) {
                     switch (current_section)

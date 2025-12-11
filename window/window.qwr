@@ -59,18 +59,18 @@ secretFmt. "Magicnumber: %d"
 magicNum. {0}
 
 ; Setup Window
-+{0} ::'_GetModuleHandleA@4' mov esi eax
++{0} @'_GetModuleHandleA@4' mov esi eax
 mov #[wc] 48
 mov #[wc+4] 0
 mov #[wc+8] wndProc
 mov #[wc+12] 0
 mov #[wc+16] 0
 mov '[wc+20]' eax
-+'0x10' +32 +32 +1 +iconPath +0 ::'_LoadImageA@24' ; Load icon
++'0x10' +32 +32 +1 +iconPath +0 @'_LoadImageA@24' ; Load icon
 try eax eax ? checkE
 mov #[wc+24] eax
 mov #[wc+44] eax
-+'0x10' +32 +32 +2 +cursorPath +0 ::'_LoadImageA@24' ; Load cursor
++'0x10' +32 +32 +2 +cursorPath +0 @'_LoadImageA@24' ; Load cursor
 try eax eax ? checkE
 mov #[wc+28] eax
 mov #[wc+32] 6
@@ -78,37 +78,37 @@ mov #[wc+36] 0
 mov #[wc+40] className
 
 ; Register class
-+wc ::'_RegisterClassExA@4'
++wc @'_RegisterClassExA@4'
 try eax eax ? checkE
 
 ; Create Window
 +0 +esi +0 +0 +300 +400 +100 +100 +WS_OVERLAPPEDWINDOW
-+windowTitle +className +0 ::'_CreateWindowExA@48' mov ebx eax
++windowTitle +className +0 @'_CreateWindowExA@48' mov ebx eax
 
 ; Display window and update window
-+'SW_SHOWNORMAL' +ebx ::'_ShowWindow@8'
-+ebx ::'_UpdateWindow@4'
++'SW_SHOWNORMAL' +ebx @'_ShowWindow@8'
++ebx @'_UpdateWindow@4'
 
 ; --- Create Button ---
 +0 +esi +BUTTON_ID +ebx +50 +50 +100 +100 +'WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON' +buttonText +buttonClass +0
-::'_CreateWindowExA@48'
+@'_CreateWindowExA@48'
 ; --- Create Edit ---
 +0 +esi +0 +ebx +20 +200 +50 +50 +'WS_CHILD | WS_VISIBLE | WS_BORDER | ES_LEFT' +0 +editClass +0
-::'_CreateWindowExA@48' mov '[hEdit]' eax
+@'_CreateWindowExA@48' mov '[hEdit]' eax
 :msgloop
 
 msgloop.:
-    +0 +0 +0 +msg ::'_GetMessageA@16'
+    +0 +0 +0 +msg @'_GetMessageA@16'
     try eax eax ? checkE
-    +msg ::'_TranslateMessage@4'
-    +msg ::'_DispatchMessageA@4'
+    +msg @'_TranslateMessage@4'
+    +msg @'_DispatchMessageA@4'
     :msgloop
 
 wndProc.:
     mov eax '[esp+8]'
     .eax % WM_COMMAND ? event
     .eax % WM_DESTROY ! defproc
-    +0 ::'_PostQuitMessage@4'
+    +0 @'_PostQuitMessage@4'
     xor eax eax / 16
 
 event.:
@@ -117,17 +117,17 @@ event.:
     xor eax eax / 16
 
 buttonCmd.:
-    +editMsg +128 +WM_GETTEXT +#hEdit ::'_SendMessageA@16'
+    +editMsg +128 +WM_GETTEXT +#hEdit @'_SendMessageA@16'
     editMsg & password ? secret
-    +editMsg ::morse clr 4 mov ebx eax
-    +0 +windowTitle +ebx +0 ::'_MessageBoxA@16'
-    +ebx ::wincopy
+    +editMsg @morse clr 4 mov ebx eax
+    +0 +windowTitle +ebx +0 @'_MessageBoxA@16'
+    +ebx @wincopy
     xor eax eax / 16
 
 secret.:
     magicNum randint 1 10
-    +#magicNum +secretFmt +secretMsg ::_sprintf clr 12
-    +0 +windowTitle +secretMsg +0 ::'_MessageBoxA@16'
+    +#magicNum +secretFmt +secretMsg @_sprintf clr 12
+    +0 +windowTitle +secretMsg +0 @'_MessageBoxA@16'
 
 defproc.:
     mov eax '[esp+4]'
@@ -135,7 +135,7 @@ defproc.:
     mov edx '[esp+12]'
     mov ebx '[esp+16]'
     +ebx +edx +ecx +eax
-    ::'_DefWindowProcA@16' / 16
+    @'_DefWindowProcA@16' / 16
 
 ; ------- ERROR ---------
 errTitle. "Error"
@@ -145,10 +145,10 @@ errFmt. "[Error] Code: %d"
 |errMsg 64
 
 checkE.:
-    ::'_GetLastError@0' mov '[errCode]' eax
+    @'_GetLastError@0' mov '[errCode]' eax
     .eax % 0 ! error*
 
 error.:
     print #errCode errFmt
-    +#errCode +errFmt +errMsg ::_sprintf clr 12
-    +'0x00000010' +errTitle +errMsg +0 ::'_MessageBoxA@16'*
+    +#errCode +errFmt +errMsg @_sprintf clr 12
+    +'0x00000010' +errTitle +errMsg +0 @'_MessageBoxA@16'*

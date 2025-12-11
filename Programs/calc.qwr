@@ -3,7 +3,7 @@ func.:
     add $2 5. $2
     / 8 $2
 
-+#[d+2*4] +#[d+1*4] ::func
++#[d+2*4] +#[d+1*4] @func
 mov (d+0*4) eax
 
 fmt. "Deine Zahl ist: %d\n"

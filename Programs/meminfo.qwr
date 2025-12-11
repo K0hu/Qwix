@@ -39,7 +39,7 @@ mov '[vendor+4]' edx
 mov '[vendor+8]' ecx
 
 mov #[meminfo] 64
-+meminfo ::GlobalMemoryStatusEx
++meminfo @GlobalMemoryStatusEx
 
 define DIV_MB 1048576
 total_ram_mb. {0}
@@ -68,8 +68,8 @@ mov ecx DIV_MB ~div ecx
 mov '[avail_virt_mb]' eax
 
 +#[avail_virt_mb] +#[total_virt_mb] +#[avail_ram_mb] +#[total_ram_mb] 
-+cpu_name +vendor +fmt_all +buffer ::_sprintf
++cpu_name +vendor +fmt_all +buffer @_sprintf
 
 title. "System Infos"
-+{0} +title +buffer +{0} ::'_MessageBoxA@16'
++{0} +title +buffer +{0} @'_MessageBoxA@16'
 
