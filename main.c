@@ -70,7 +70,6 @@ typedef enum {
     TOKEN_ECLAM,
     TOKEN_ARG,
     TOKEN_FLOAT,
-    TOKEN_DOUBLE,
     TOKEN_CALL,
     TOKEN_MOV
 } TokenType;
@@ -85,12 +84,11 @@ typedef enum {
     REG_ESP,
     REG_EBP,
     EBP_COUNT
-} RegisterName
+} RegisterName;
 
 // Type of variables
 typedef enum {
     FLOAT,
-    DOUBLE,
     INT,
     STR
 } Type;
@@ -172,24 +170,7 @@ Token get_next_token(const char **input) {
 
     while (isspace(**input)) (*input)++;
 
-    
-    char *end;
-    double val = strtod(*input, &end);
-
-    if (end != *input) {
-        // Ein Float / Double wurde erfolgreich gelesen!
-        Token t = { TOKEN_DOUBLE, val };
-        snprintf(t.name, sizeof(t.name), "%g", val);
-        t.dif = DOUBLE;
-        
-        *input = end;                     // Inputpointer weiterbewegen!
-        return t;
-    }
-
-    if (**input == '\0') {
-        return (Token){ TOKEN_EOF, 0 };
-    }
-
+    // sonst: Integer checken
     if (isdigit(**input)) {
         int value = 0;
         while (isdigit(**input)) {
@@ -201,6 +182,11 @@ Token get_next_token(const char **input) {
         t.dif = INT;
         return t;
     }
+
+    if (**input == '\0') {
+        return (Token){ TOKEN_EOF, 0 };
+    }
+
 
     if (**input == '+') {
         (*input)++;
@@ -256,6 +242,18 @@ Token get_next_token(const char **input) {
         Token t = { TOKEN_COM, 0 };
         strncpy(t.name, buffer, 127);
 
+        return t;
+    }
+
+    if (**input == '-') {
+        (*input)++;
+        int value = 0;
+        if (isdigit(**input)) {
+            value = (value * 10 + (**input - '0')) * 4;
+            (*input)++;
+        }
+        Token t = { TOKEN_ARG, value };
+        snprintf(t.name, sizeof(t.name), "[]", value);
         return t;
     }
 
@@ -322,17 +320,39 @@ Token get_next_token(const char **input) {
     }
 
     if (**input == '[') {
-        char quote = ']';
-        (*input)++;
-        int i = 0;
-        char buffer[128] = {0};
-        while (**input != quote && **input != '\0' && i < 127) {
-            buffer[i++] = **input;
-            (*input)++;
+    (*input)++;  // skip '['
+
+    const char* start = *input;
+    const char* p = *input;
+    const char* lastBracket = NULL;
+
+    while (*p != '\0') {
+        if (*p == ']')
+            lastBracket = p;   // merke JEDE Position eines ']' 
+        p++;
+    }
+
+    // Kein ']' gefunden?
+    if (!lastBracket) {
+            // Dann ist alles vom '[' bis EOF der Inhalt
+            Token t = { TOKEN_ECLAM, 0 };
+            strncpy(t.name, start, sizeof(t.name)-1);
+            *input = p; // bis zum Ende
+            return t;
         }
-        if (**input == quote) (*input)++;
+
+        // Länge bis zum letzten ']'
+        int length = lastBracket - start;
+
         Token t = { TOKEN_ECLAM, 0 };
-        strncpy(t.name, buffer, 127);
+        if (length >= sizeof(t.name))
+            length = sizeof(t.name)-1;
+
+        strncpy(t.name, start, length);
+        t.name[length] = '\0';
+
+        *input = lastBracket + 1;  // hinter das letzte ]
+
         return t;
     }
 
@@ -501,7 +521,7 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
 
         switch (t.type) {
             case TOKEN_CALL:
-                snprintf(formatted, sizeof(formatted), "call %s\n    ", tokens[i + 2].name);
+                snprintf(formatted, sizeof(formatted), "call %s\n    ", tokens[i + 1].name);
                 if (!is_in_array(jumps, jmp_count, tokens[i + 2].name)) {
                     if (!nw) {
                         errno = EINVAL;
@@ -589,17 +609,18 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
 
                 char * push = strtok(t.name, ",");
                 while(push != NULL) {
-                    rpush = append(rpush, snprintf(formatted, sizeof(formatted), "push %s\n    ", push))
-                    push = strtok(NULL, ",")
+                    snprintf(formatted, sizeof(formatted), "push %s\n    ", push);
+                    rpush = append(rpush, formatted);
+                    push = strtok(NULL, ",");
                 }
                 switch (current_section)
                 {
                 case 1:
-                    jmp = append(jmp, formatted);
+                    jmp = append(jmp, rpush);
                     break;
                 
                 default:
-                    code = append(code, formatted);
+                    code = append(code, rpush);
                     break;
                 }
                 break;
@@ -885,7 +906,6 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
             case TOKEN_DEF: break;
             case TOKEN_STR: break;
             case TOKEN_ARG: break;
-            case TOKEN_DOUBLE: break;
             case TOKEN_FLOAT: break;
             case TOKEN_MOV: 
                 if (tokens[i - 2].type == TOKEN_VAR) {
@@ -905,7 +925,6 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                 }
                 break;
             case TOKEN_BSS: 
-                double value;
             	if (tokens[i + 2].type == TOKEN_INT) {
                     char* input = tokens[2 + i].name;
                     replace_all_vars(expr, variables, var_count);
@@ -926,20 +945,21 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
             case TOKEN_CLAMP: break;
             case TOKEN_UNKNOWN:
                 if (tokens[i + 1].type == TOKEN_DEF) { // Wenn es eine Definition
-                    if (tokens[i + 2].dif == DOUBLE) {
+                    if (tokens[i + 2].type == TOKEN_JMP) {
+                        snprintf(formatted, sizeof(formatted), "\n%s:\n    ", t.name);
+                        jmp = append(jmp, formatted);
+                        current_section = 1;
+                        jumps = addVar(jumps, &jmp_count, t.name, 0, "");
+                        i += 2;
+                    } else if (tokens[i + 2].dif == INT && !strcmp(tokens[i - 1].name, "dq")) {
                         char formatted[512];
-                        snprintf(formatted, sizeof(formatted), "%s dq %s\n    ", t.name, tokens[i + 2].name);
-                        data = append(data, formatted);
-                        variables = addVar(variables, &var_count, t.name, (int)value, "");
-                    } else if (tokens[i + 2].dif == FLOAT) {
-                        char formatted[512];
-                        snprintf(formatted, sizeof(formatted), "%s dd %s\n    ", t.name, tokens[i + 2].name);
+                        snprintf(formatted, sizeof(formatted), "%s dq %s.%s\n    ", t.name, tokens[i + 2].name, tokens[i + 3].type == TOKEN_DEF ? tokens[i + 4].name : "0");
                         data = append(data, formatted);
                         variables = addVar(variables, &var_count, t.name, (int)value, "");
                     } else if (tokens[i + 2].dif == INT) { // Definition eines Int.
                         double value;
                         char formatted[512];
-                        if (tokens[i + 1].type == TOKEN_INT) {    
+                        if (tokens[i + 2].type == TOKEN_INT) {    
                             char* input = tokens[2 + i].name;
                             replace_all_vars(expr, variables, var_count);
                             value = te_interp(expr, 0);
@@ -948,7 +968,7 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                         }
 
                         if (!is_in_array(variables, var_count, t.name)) {
-                            snprintf(formatted, sizeof(formatted), floor(value) == value ? "%s dd %d\n    " : "%s dq %d\n    ", t.name, floor(value) == value ? (int)value : value);
+                            snprintf(formatted, sizeof(formatted), (floor(value) == value) ? "%s dd %.0f\n    " : "%s dq %f\n    ", t.name, value);
                             data = append(data, formatted);
                             variables = addVar(variables, &var_count, t.name, (int)value, "");
                         } else {
@@ -967,6 +987,7 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                                 updateVar(variables, var_count, t.name, (int)value, "");
                             }  
                         }
+                        i += 2;
 
                     } else if (tokens[i + 2].dif == STR) {
                         char* string = tokens[i + 2].name;
@@ -983,12 +1004,6 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                         i += 2;
                         data = append(data, formatted);
                         variables = addVar(variables, &var_count, t.name, 0, string);
-                    } else if (tokens[i + 2].type == TOKEN_JMP) {
-                        snprintf(formatted, sizeof(formatted), "\n%s:\n    ", t.name);
-                        jmp = append(jmp, formatted);
-                        current_section = 1;
-                        jumps = addVar(jumps, &jmp_count, t.name, 0, "");
-                        i += 2;
                     } else if (tokens[i + 2].type == TOKEN_VAR) {
                         snprintf(formatted, sizeof(formatted), "%s db %s dup(0)\n    ", t.name, tokens[i + 3].name);
                         data = append(data, formatted);
@@ -1055,6 +1070,7 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                         code = append(code, formatted);
                         break;
                     }
+                    i += n;
                 } else if (!strcmp(t.name, "atoi")) {
                     if (is_in_array(variables, var_count, tokens[i + 2].name) && is_in_array(variables, var_count, tokens[i + 1].name)) {
                         snprintf(formatted, sizeof(formatted), "push %s\n    call _atoi\n    add esp, 4\n    mov [%s], eax\n    ", tokens[i + 2].name, tokens[i + 1].name);
@@ -1204,36 +1220,60 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                     }
                     i += 3;
                 } else if (!strcmp(t.name, "math")) {
-                    current = i + 1
+                    int current = i + 1;
                     char* math = malloc(1); 
                     math[0] = '\0';
 
-                    while (tokens[current].type == TOKEN_EOF || tokens[current].type == TOKEN_COM) {
+                    while (!(tokens[current].type == TOKEN_EOF || tokens[current].type == TOKEN_COM)) {
                         if (tokens[current].type == TOKEN_SUB) {
-                            if (current - i == i) {
-                                math = append(math, snprintf(formatted, sizeof(formatted), "mov eax, %s\n    sub eax, %s\n    ", tokens[i - 1].name, tokens[i + 1].name));
+                            if (current - 2 == i) {
+                                snprintf(formatted, sizeof(formatted),
+                                        "mov eax, %s\n    sub eax, %s\n    ",
+                                        tokens[current - 1].name, tokens[current + 1].name);
                             } else {
-                                math = append(math, snprintf(formatted, sizeof(formatted), "sub eax, %s\n    ", tokens[i + 1].name));
+                                snprintf(formatted, sizeof(formatted),
+                                        "sub eax, %s\n    ",
+                                        tokens[current + 1].name);
                             }
-                        } else if (tokens[current].type == TOKEN_END) {
-                            if (current - i == i) {
-                                math = append(math, snprintf(formatted, sizeof(formatted), "mov eax, %s\n    mov ebx, %s\n    mul ebx\n    ", tokens[i - 1].name, tokens[i + 1].name));
+                            math = append(math, formatted);
+
+                        } else if (tokens[current].type == TOKEN_END) {   // multiplication
+                            if (current - 2 == i) {
+                                snprintf(formatted, sizeof(formatted),
+                                        "mov eax, %s\n    mov ebx, %s\n    mul ebx\n    ",
+                                        tokens[current - 1].name, tokens[current + 1].name);
                             } else {
-                                math = append(math, snprintf(formatted, sizeof(formatted), "mov ebx, %s\n    mul ebx\n    ", tokens[i + 1].name));
+                                snprintf(formatted, sizeof(formatted),
+                                        "mov ebx, %s\n    mul ebx\n    ",
+                                        tokens[current + 1].name);
                             }
-                        } else if (tokens[current].type == TOKEN_RET) {
-                            if (current - i == i) {
-                                math = append(math, snprintf(formatted, sizeof(formatted), "mov eax, %s\n    mov ebx, %s\n    xor edx, edx\n    div ebx\n    ", tokens[i - 1].name, tokens[i + 1].name));
+                            math = append(math, formatted);
+
+                        } else if (tokens[current].type == TOKEN_RET) {   // division
+                            if (current - 2 == i) {
+                                snprintf(formatted, sizeof(formatted),
+                                        "mov eax, %s\n    mov ebx, %s\n    xor edx, edx\n    div ebx\n    ",
+                                        tokens[current - 1].name, tokens[current + 1].name);
                             } else {
-                                math = append(math, snprintf(formatted, sizeof(formatted), "mov ebx, %s\n    xor edx, edx\n    div ebx\n    ", tokens[i + 1].name));
+                                snprintf(formatted, sizeof(formatted),
+                                        "mov ebx, %s\n    xor edx, edx\n    div ebx\n    ",
+                                        tokens[current + 1].name);
                             }
-                        } else if (tokens[current].type == TOKEN_POP) {
-                            if (current - i == i) {
-                                math = append(math, snprintf(formatted, sizeof(formatted), "mov eax, %s\n    add eax, %s\n    ", tokens[i - 1].name, tokens[i + 1].name));
+                            math = append(math, formatted);
+
+                        } else if (tokens[current].type == TOKEN_POP) {   // addition
+                            if (current - 2 == i) {
+                                snprintf(formatted, sizeof(formatted),
+                                        "mov eax, %s\n    add eax, %s\n    ",
+                                        tokens[current - 1].name, tokens[current + 1].name);
                             } else {
-                                math = append(math, snprintf(formatted, sizeof(formatted), "add eax, %s\n    ", tokens[i + 1].name));
+                                snprintf(formatted, sizeof(formatted),
+                                        "add eax, %s\n    ",
+                                        tokens[current + 1].name);
                             }
+                            math = append(math, formatted);
                         }
+
                         current++;
                     }
                     i = current;
@@ -1247,13 +1287,13 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                         break;
                     }
                 } else if (!strcmp(t.name, "sub")) {
-                    if (!strcmp(tokens[i - 1], "dq")) {
+                    if (!strcmp(tokens[i - 1].name, "dq")) {
                         if (tokens[i + 3].type == TOKEN_DEF) {
                             snprintf(formatted, sizeof(formatted), "movsd xmm0, %s\n    movsd xmm1, %s\n    subsd xmm0, xmm1\n    movsd %s, xmm0\n    ", tokens[i + 1].name, tokens[i + 2].name, tokens[i + 4].name);
                         } else {
                             snprintf(formatted, sizeof(formatted), "movsd xmm0, %s\n    movsd xmm1, %s\n    subsd xmm0, xmm1\n    ", tokens[i + 1].name, tokens[i + 2].name);
                         }
-                    else {
+                    } else {
                         if (tokens[i + 3].type == TOKEN_DEF) {
                             snprintf(formatted, sizeof(formatted), "mov eax, %s\n    sub eax, %s\n    mov %s, eax\n    ", tokens[i + 1].name, tokens[i + 2].name, tokens[i + 4].name);
                         } else {
@@ -1272,13 +1312,13 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                     }
                     i += 3;
                 }  else if (!strcmp(t.name, "mul")) {
-                    if (!strcmp(tokens[i - 1], "dq")) {
+                    if (!strcmp(tokens[i - 1].name, "dq")) {
                         if (tokens[i + 3].type == TOKEN_DEF) {
                             snprintf(formatted, sizeof(formatted), "movsd xmm0, %s\n    movsd xmm1, %s\n    mulsd xmm0, xmm1\n    movsd %s, xmm0\n    ", tokens[i + 1].name, tokens[i + 2].name, tokens[i + 4].name);
                         } else {
                             snprintf(formatted, sizeof(formatted), "movsd xmm0, %s\n    movsd xmm1, %s\n    mulsd xmm0, xmm1\n    ", tokens[i + 1].name, tokens[i + 2].name);
                         }
-                    else {
+                    } else {
                         if (tokens[i + 3].type == TOKEN_DEF) {
                             snprintf(formatted, sizeof(formatted), "mov eax, %s\n    mov ebx, %s\n    mul ebx\n    mov %s, eax\n    ", tokens[i + 1].name, tokens[i + 2].name, tokens[i + 4].name);
                         } else {
@@ -1297,13 +1337,13 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                     }
                     i += 3;
                 } else if (!strcmp(t.name, "div")) {
-                    if (!strcmp(tokens[i - 1], "dq")) {
+                    if (!strcmp(tokens[i - 1].name, "dq")) {
                         if (tokens[i + 3].type == TOKEN_DEF) {
                             snprintf(formatted, sizeof(formatted), "movsd xmm0, %s\n    movsd xmm1, %s\n    divsd xmm0, xmm1\n    movsd %s, xmm0\n    ", tokens[i + 1].name, tokens[i + 2].name, tokens[i + 4].name);
                         } else {
                             snprintf(formatted, sizeof(formatted), "movsd xmm0, %s\n    movsd xmm1, %s\n    divsd xmm0, xmm1\n    ", tokens[i + 1].name, tokens[i + 2].name);
                         }
-                    else {
+                    } else {
                         if (tokens[i + 3].type == TOKEN_DEF) {
                             snprintf(formatted, sizeof(formatted), "mov eax, %s\n    mov ebx, %s\n    xor edx, edx\n    div ebx\n    mov %s, eax\n    ", tokens[i + 1].name, tokens[i + 2].name, tokens[i + 4].name);
                         } else {

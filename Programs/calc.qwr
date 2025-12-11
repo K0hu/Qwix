@@ -1,10 +1,2 @@
-d. [0, 1, 2]
-func.:
-    add $2 5. $2
-    / 8 $2
-
-+#[d+2*4] +#[d+1*4] @func
-mov (d+0*4) eax
-
-fmt. "Deine Zahl ist: %d\n"
-print #[d + 0*4] fmt
+a. 2
+math a + 3 
