@@ -212,6 +212,7 @@ Token get_next_token(const char **input) {
         }
     }
 
+    if (**input == '=') { (*input)++; return (Token){ TOKEN_MOV, 0 }; }
     if (**input == '@') { (*input)++; return (Token){ TOKEN_CALL, 0 }; }
     if (**input == '-') { (*input)++; return (Token){ TOKEN_SUB, 0 }; }
     if (**input == ':') { (*input)++; return (Token){ TOKEN_JMP, 0 }; }
@@ -886,6 +887,8 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
             case TOKEN_ARG: break;
             case TOKEN_DOUBLE: break;
             case TOKEN_FLOAT: break;
+            case TOKEN_MOV: 
+                break;
             case TOKEN_BSS: 
                 double value;
             	if (tokens[i + 2].type == TOKEN_INT) {
