@@ -42,6 +42,7 @@ To declare number/doubles or strings you can simply use "", numbers (and ''). To
 - ### Math
    With ```add```, ```div```, ```sub``` and ```mul``` you can calculate on runtime. With an ```. var``` at the end you can load an var with the result.
    With an ```dq``` before the operations you can calculate with doubles (only then).
+> With ```var++``` you can increase the variable (+1).
 
 ## Statements
 ```If``` or ```else``` (and so on) do not exist in Qwix. You can compare to values (with ```%```) or strings (with ```&```). After the compare an jump can happend with ```?``` (if true), ```!``` (if not), ```>``` (if greater), ```<``` (if less). You must after that call the [jump](#jumps). <br>
