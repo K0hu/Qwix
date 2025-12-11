@@ -48,6 +48,7 @@ typedef enum {
     TOKEN_TRUE,
     TOKEN_FALSE,
     TOKEN_CLAMP,
+    TOKEN_SUB,
     TOKEN_CMP,
     TOKEN_DEF,
     TOKEN_NOT,
@@ -212,6 +213,7 @@ Token get_next_token(const char **input) {
     }
 
     if (**input == '@') { (*input)++; return (Token){ TOKEN_CALL, 0 }; }
+    if (**input == '-') { (*input)++; return (Token){ TOKEN_SUB, 0 }; }
     if (**input == ':') { (*input)++; return (Token){ TOKEN_JMP, 0 }; }
     if (**input == '|') { (*input)++; return (Token){ TOKEN_BSS, 0 }; }
     if (**input == '.') { (*input)++; return (Token){ TOKEN_DEF, 0 }; }
@@ -1183,6 +1185,26 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                         break;
                     }
                     i += 3;
+                } else if (!strcmp(t.name, "math")) {
+                    current = i + 1
+                    char* math = malloc(1); 
+                    math[0] = '\0';
+
+                    while (tokens[current].type == TOKEN_EOF || tokens[current].type == TOKEN_COM) {
+                        if (tokens[current].type == TOKEN_SUB) {
+                            if (current - i == i) {
+                                math = append(math, snprintf(formatted, sizeof(formatted), "mov eax, %s\n    sub eax, %s\n    ", tokens[i - 1].name, tokens[i + 1].name));
+                            } else {
+                                math = append(math, snprintf(formatted, sizeof(formatted), "sub eax, %s\n    ", tokens[i - 1].name, tokens[i + 1].name));
+                            }
+                        } else if (tokens[current].type == TOKEN_END) {
+
+                        } else if (tokens[current].type == TOKEN_RET) {
+
+                        } else if (tokens[current].type == TOKEN_POP) {
+
+                        current++;
+                    }
                 } else if (!strcmp(t.name, "sub")) {
                     if (!strcmp(tokens[i - 1], "dq")) {
                         if (tokens[i + 3].type == TOKEN_DEF) {
