@@ -69,8 +69,22 @@ typedef enum {
     TOKEN_ECLAM,
     TOKEN_ARG,
     TOKEN_FLOAT,
-    TOKEN_DOUBLE
+    TOKEN_DOUBLE,
+    TOKEN_CALL,
+    TOKEN_MOV
 } TokenType;
+
+typedef enum {
+    REG_EAX,
+    REG_EBX,
+    REG_ECX,
+    REG_EDX,
+    REG_ESI,
+    REG_EDI,
+    REG_ESP,
+    REG_EBP,
+    EBP_COUNT
+} RegisterName
 
 // Type of variables
 typedef enum {
@@ -196,6 +210,8 @@ Token get_next_token(const char **input) {
             return (Token){ TOKEN_POP, 0 };
         }
     }
+
+    if (**input == '@') { (*input)++; return (Token){ TOKEN_CALL, 0 }; }
     if (**input == ':') { (*input)++; return (Token){ TOKEN_JMP, 0 }; }
     if (**input == '|') { (*input)++; return (Token){ TOKEN_BSS, 0 }; }
     if (**input == '.') { (*input)++; return (Token){ TOKEN_DEF, 0 }; }
@@ -481,25 +497,34 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
         }
 
         switch (t.type) {
-            case TOKEN_JMP:  
-                if (tokens[i + 1].type == TOKEN_JMP) {
-                    snprintf(formatted, sizeof(formatted), "call %s\n    ", tokens[i + 2].name);
-                    if (!is_in_array(jumps, jmp_count, tokens[i + 2].name)) {
-                        if (!nw) {
-                            errno = EINVAL;
-                            snprintf(error, sizeof(error), FETT "Warning: " RESET "'" BLUE "%s" RESET "' not found [" MAGENTA "%d" RESET "]", tokens[i + 2].name, EOF_counter);
-                            perror(error);
-                        }
+            case TOKEN_CALL:
+                snprintf(formatted, sizeof(formatted), "call %s\n    ", tokens[i + 2].name);
+                if (!is_in_array(jumps, jmp_count, tokens[i + 2].name)) {
+                    if (!nw) {
+                        errno = EINVAL;
+                        snprintf(error, sizeof(error), FETT "Warning: " RESET "'" BLUE "%s" RESET "' not found [" MAGENTA "%d" RESET "]", tokens[i + 2].name, EOF_counter);
+                        perror(error);
                     }
-                    i++;
-                } else {
-                    snprintf(formatted, sizeof(formatted), "jmp %s\n    ", tokens[i + 1].name);
-                    if (!is_in_array(jumps, jmp_count, tokens[i + 1].name)) {
-                        if (!nw) {
-                            errno = EINVAL;
-                            snprintf(error, sizeof(error), FETT "Warning: " RESET "'" BLUE "%s" RESET "' not found [" MAGENTA "%d" RESET "]", tokens[i + 1].name, EOF_counter);
-                            perror(error);
-                        }
+                }
+                switch (current_section)
+                {
+                case 1:
+                    jmp = append(jmp, formatted);
+                    break;
+                
+                default:
+                    code = append(code, formatted);
+                    break;
+                }
+                break;
+                
+            case TOKEN_JMP:
+                snprintf(formatted, sizeof(formatted), "jmp %s\n    ", tokens[i + 1].name);
+                if (!is_in_array(jumps, jmp_count, tokens[i + 1].name)) {
+                    if (!nw) {
+                        errno = EINVAL;
+                        snprintf(error, sizeof(error), FETT "Warning: " RESET "'" BLUE "%s" RESET "' not found [" MAGENTA "%d" RESET "]", tokens[i + 1].name, EOF_counter);
+                        perror(error);
                     }
                 }
                 
@@ -557,8 +582,17 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
             case TOKEN_TAB: break;
             case TOKEN_ECLAM: break;
             case TOKEN_POP: 
-                if (current_section == 1 && (tokens[i + 1].type == TOKEN_EOF || tokens[i + 1].type == TOKEN_COM)) {
-                    jmp = append(jmp, "pop eax\n    ");
+                if ((tokens[i + 1].type == TOKEN_EOF || tokens[i + 1].type == TOKEN_COM)) {
+                    switch (current_section)
+                    {
+                    case 1:
+                        jmp = append(jmp, "pop\n    ");
+                        break;
+                    
+                    default:
+                        code = append(code, "pop\n    ");
+                        break;
+                    }
                 } else {
                     if (tokens[i + 1].dif == INT) {
                         char* expr = tokens[i + 1].name;

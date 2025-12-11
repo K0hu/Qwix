@@ -55,7 +55,7 @@ a%b ?jump
 
 ## Functions
 - ### Jumps
-    Jumps are very important, they can be used and must be used for a lot. They are declared with ```name.:``` (.:) and to jump is an ```:name``` or called (for functions with return) with ```::name```.
+    Jumps are very important, they can be used and must be used for a lot. They are declared with ```name.:``` (.:) and to jump is an ```:name``` or called (for functions with return) with ```@name```.
 - ### Push
    The push is used to give an function variables. ```+name``` is used to do that. To push variables with numbers you use ```+#(name)```. The hashtag marks an dword (number).
 - ### Return
