@@ -79,6 +79,9 @@ a%b ?jump
 - ### Randint
     Randint has to options on runtime or not on runtime. With the include of the lib (```include [lib/include]```) randint functions on runtime, when not included it works but not on runtime. ```randint min max```
 
+> [!NOTE]
+> With an ```*``` you can end the program.
+
 # Assembly
 How in the introduction mentioned qwix is based on nasm/assembly. 
 Assembly code can be written direct in qwix with ```~asm code... (~)``` this can be done (its optional to close is). 
