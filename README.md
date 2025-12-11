@@ -40,7 +40,7 @@ To declare number/doubles or strings you can simply use "", numbers (and ''). To
    The ```{}``` are the identifier for TinyExpr. (Not on runtime)
 
 - ### Math
-   With ```add```, ```div```, ```sub``` and ```mul``` you can calculate on runtime.
+   With ```add```, ```div```, ```sub``` and ```mul``` you can calculate on runtime. With an ```. var``` at the end you can load an var with the result.
    With an ```dq``` before the operations you can calculate with doubles (only then).
 
 ## Statements
@@ -72,4 +72,22 @@ a%b ?jump
 - ### Atoi
     ```atoi var string```, is used to refrence  ```atoi``` the first parameter is the var to load and the string is (also a variable) to be converted to an number.
 - ### Include
-    ```include lib``` includes extern programms.
+    ```include lib``` includes extern programs. To include local programs use, ```include [path]```.
+- ### Prompt
+    The prompt command is a user input in the console. (```prompt var msg```)
+- ### Randint
+    Randint has to options on runtime or not on runtime. With the include of the lib (```include [lib/include]```) randint functions on runtime, when not included it works but not on runtime. ```randint min max```
+
+# Assembly
+How in the introduction mentioned qwix is based on nasm/assembly. 
+Assembly code can be written direct in qwix with ```~asm code... (~)``` this can be done (its optional to close is). 
+- ```mov```, ```try```, ```xor```: can be used like in asm but without the ```,```.
+
+# Compiler
+The compiler uses Nasm and GoLink to make it an executeble. It has different options:
+- ```qwix.exe file.qwr```: Execute qwix code (makes executeble in the tmp folder).
+- ```-nc```: No console
+- ```-o```: Output an .exe file
+- ```-asm```: Output an .asm file
+- ```-nw```: Disable output of the warnings
+- ```-gop```: GoLink output enable

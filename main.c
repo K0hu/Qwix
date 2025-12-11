@@ -1159,7 +1159,7 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                         break;
                     } 
                 } else if (!strcmp(t.name, "add")) {
-                    if (!strcmp(tokens[i - 1], "dq")) {
+                    if (!strcmp(tokens[i - 1].name, "dq")) {
                         if (tokens[i + 3].type == TOKEN_DEF) {
                             snprintf(formatted, sizeof(formatted), "movsd xmm0, %s\n    movsd xmm1, %s\n    addsd xmm0, xmm1\n    movsd %s, xmm0\n    ", tokens[i + 1].name, tokens[i + 2].name, tokens[i + 4].name);
                         } else {
