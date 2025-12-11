@@ -1195,15 +1195,38 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                             if (current - i == i) {
                                 math = append(math, snprintf(formatted, sizeof(formatted), "mov eax, %s\n    sub eax, %s\n    ", tokens[i - 1].name, tokens[i + 1].name));
                             } else {
-                                math = append(math, snprintf(formatted, sizeof(formatted), "sub eax, %s\n    ", tokens[i - 1].name, tokens[i + 1].name));
+                                math = append(math, snprintf(formatted, sizeof(formatted), "sub eax, %s\n    ", tokens[i + 1].name));
                             }
                         } else if (tokens[current].type == TOKEN_END) {
-
+                            if (current - i == i) {
+                                math = append(math, snprintf(formatted, sizeof(formatted), "mov eax, %s\n    mov ebx, %s\n    mul ebx\n    ", tokens[i - 1].name, tokens[i + 1].name));
+                            } else {
+                                math = append(math, snprintf(formatted, sizeof(formatted), "mov ebx, %s\n    mul ebx\n    ", tokens[i + 1].name));
+                            }
                         } else if (tokens[current].type == TOKEN_RET) {
-
+                            if (current - i == i) {
+                                math = append(math, snprintf(formatted, sizeof(formatted), "mov eax, %s\n    mov ebx, %s\n    xor edx, edx\n    div ebx\n    ", tokens[i - 1].name, tokens[i + 1].name));
+                            } else {
+                                math = append(math, snprintf(formatted, sizeof(formatted), "mov ebx, %s\n    xor edx, edx\n    div ebx\n    ", tokens[i + 1].name));
+                            }
                         } else if (tokens[current].type == TOKEN_POP) {
-
+                            if (current - i == i) {
+                                math = append(math, snprintf(formatted, sizeof(formatted), "mov eax, %s\n    add eax, %s\n    ", tokens[i - 1].name, tokens[i + 1].name));
+                            } else {
+                                math = append(math, snprintf(formatted, sizeof(formatted), "add eax, %s\n    ", tokens[i + 1].name));
+                            }
+                        }
                         current++;
+                    }
+                    i = current;
+                    switch (current_section)
+                    {
+                    case 1:
+                        jmp = append(jmp, math);
+                        break;
+                    default:
+                        code = append(code, math);
+                        break;
                     }
                 } else if (!strcmp(t.name, "sub")) {
                     if (!strcmp(tokens[i - 1], "dq")) {
