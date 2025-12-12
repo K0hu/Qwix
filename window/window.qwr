@@ -30,7 +30,7 @@ define SW_SHOWNORMAL '1'
 className. "WindowClass"
 windowTitle. "You shall not pass"
 |wc '48'
-|msg '48'
+|msg '28'
 
 ; Button
 define BUTTON_ID '1001'
@@ -49,33 +49,33 @@ editClass. "EDIT"
 |editMsg 128
 
 ; Sources
-iconPath. "C:\\Users\\Quentin\\Documents\\C\\Qwix\\2.0\\window\\sources\\window.ico"
-cursorPath. "C:\\Users\\Quentin\\Documents\\C\\Qwix\\2.0\\window\\sources\\Gandalf.cur"
+iconPath. "sources\\window.ico"
+cursorPath. "sources\\Gandalf.cur"
 
 ; Secret
 password. "qwix"
 |secretMsg 64
 secretFmt. "Magicnumber: %d"
-magicNum. {0}
+magicNum. 0
 
 ; Setup Window
 +{0} @'_GetModuleHandleA@4' mov esi eax
-mov #[wc] 48
-mov #[wc+4] 0
-mov #[wc+8] wndProc
-mov #[wc+12] 0
-mov #[wc+16] 0
-mov '[wc+20]' eax
+mov #(wc) 48
+mov #(wc+4) 0
+mov #(wc+8) wndProc
+mov #(wc+12) 0
+mov #(wc+16) 0
+mov (wc+20) eax
 +'0x10' +32 +32 +1 +iconPath +0 @'_LoadImageA@24' ; Load icon
 try eax eax ? checkE
-mov #[wc+24] eax
-mov #[wc+44] eax
+#(wc+24) = eax
+mov #(wc+44) eax
 +'0x10' +32 +32 +2 +cursorPath +0 @'_LoadImageA@24' ; Load cursor
 try eax eax ? checkE
-mov #[wc+28] eax
-mov #[wc+32] 6
-mov #[wc+36] 0
-mov #[wc+40] className
+#(wc+28) = eax
+#(wc+32) = 6
+#(wc+36) =  0
+#(wc+40) = className
 
 ; Register class
 +wc @'_RegisterClassExA@4'
@@ -105,19 +105,19 @@ msgloop.:
     :msgloop
 
 wndProc.:
-    mov eax '[esp+8]'
+    mov eax (esp+8)
     .eax % WM_COMMAND ? event
     .eax % WM_DESTROY ! defproc
     +0 @'_PostQuitMessage@4'
     xor eax eax / 16
 
 event.:
-    mov eax '[esp+12]'
+    mov eax (esp+12)
     .eax % BUTTON_ID ? buttonCmd ! defproc
     xor eax eax / 16
 
 buttonCmd.:
-    +editMsg +128 +WM_GETTEXT +#hEdit @'_SendMessageA@16'
+    +editMsg +128 +WM_GETTEXT +#(hEdit) @'_SendMessageA@16'
     editMsg & password ? secret
     +editMsg @morse clr 4 mov ebx eax
     +0 +windowTitle +ebx +0 @'_MessageBoxA@16'
@@ -126,14 +126,14 @@ buttonCmd.:
 
 secret.:
     magicNum randint 1 10
-    +#magicNum +secretFmt +secretMsg @_sprintf clr 12
+    +#(magicNum) +secretFmt +secretMsg @_sprintf clr 12
     +0 +windowTitle +secretMsg +0 @'_MessageBoxA@16'
 
 defproc.:
-    mov eax '[esp+4]'
-    mov ecx '[esp+8]'
-    mov edx '[esp+12]'
-    mov ebx '[esp+16]'
+    mov eax (esp+4)
+    mov ecx (esp+8)
+    mov edx (esp+12)
+    mov ebx (esp+16)
     +ebx +edx +ecx +eax
     @'_DefWindowProcA@16' / 16
 
@@ -145,10 +145,10 @@ errFmt. "[Error] Code: %d"
 |errMsg 64
 
 checkE.:
-    @'_GetLastError@0' mov '[errCode]' eax
+    @'_GetLastError@0' mov (errCode) eax
     .eax % 0 ! error*
 
 error.:
-    print #errCode errFmt
-    +#errCode +errFmt +errMsg @_sprintf clr 12
+    print #(errCode) errFmt
+    [#[errCode], errFmt, errMsg] @_sprintf clr 12
     +'0x00000010' +errTitle +errMsg +0 @'_MessageBoxA@16'*

@@ -31,6 +31,14 @@ char* append(char* str, const char* add_str) {
     return new_str;
 }
 
+void replace(char *str, char find, char replace) {
+    for (int i = 0; str[i] != '\0'; i++) {
+        if (str[i] == find) {
+            str[i] = replace;
+        }
+    }
+}
+
 
 bool is_integer(double value) {
     const double eps = 1e-9;
@@ -496,10 +504,20 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
         bss = append(bss, "section .bss\n    ");
     }
     df = append(df, "\n");
-    text = append(text, "section .text\n    global _start\n    extern _printf, strcmp, srand, GetTickCount, gets, _atoi");
+#ifdef _WIN32
+        text = append(text, "section .text\n    global _start\n    extern _printf, strcmp, srand, GetTickCount, gets, _atoi");
+#else
+        text = append(text, "section .text\n    global _start\n    extern printf, atoi, fgets, time");
+#endif
+
     data = append(data, "section .data\n    ");
     if (ri) {
-        code = append(code, "_start:\n    push 0\n    call GetTickCount\n    push eax\n    call srand\n    add esp, 4\n    ");
+#ifdef _WIN32
+            code = append(code, "_start:\n    push 0\n    call GetTickCount\n    add esp, 4\n    push eax\n    call srand\n    add esp, 4\n    ");
+#else
+            code = append(code, "_start:\n    push 0\n    call time\n    add esp, 4\n    push eax\n    call srand\n    add esp, 4\n    ");
+#endif
+        
     } else {code = append(code, "_start:\n    ");}
 
     for (int i = 0; i < *token_count; i++) {
@@ -525,7 +543,7 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                 if (!is_in_array(jumps, jmp_count, tokens[i + 2].name)) {
                     if (!nw) {
                         errno = EINVAL;
-                        snprintf(error, sizeof(error), FETT "Warning: " RESET "'" BLUE "%s" RESET "' not found [" MAGENTA "%d" RESET "]", tokens[i + 2].name, EOF_counter);
+                        snprintf(error, sizeof(error), FETT "Warning: " RESET "'" BLUE "%s" RESET "' not found [" MAGENTA "%d" RESET "]", tokens[i + 1].name, EOF_counter);
                         perror(error);
                     }
                 }
@@ -606,10 +624,17 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
             case TOKEN_ECLAM: 
                 char* rpush = malloc(1); 
                 rpush[0] = '\0';
-
                 char * push = strtok(t.name, ",");
+                
                 while(push != NULL) {
-                    snprintf(formatted, sizeof(formatted), "push %s\n    ", push);
+                    if (push[0] == '#') {
+                        memmove(push, push + 1, strlen(push));
+                        replace(push, '(', '['); replace(push, ')', ']');
+                        snprintf(formatted, sizeof(formatted), "push dword %s\n    ", push);
+                    } else {
+                        snprintf(formatted, sizeof(formatted), "push %s\n    ", push);
+                    }
+
                     rpush = append(rpush, formatted);
                     push = strtok(NULL, ",");
                 }
@@ -644,7 +669,7 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                         snprintf(tokens[i + 1].name, sizeof(tokens[i + 1].name), "%d", (int)value);
                     }
                     if (tokens[i + 1].type == TOKEN_VAR) {
-                        snprintf(formatted, sizeof(formatted), "push dword [%s]\n    ", tokens[i + 2].name);
+                        snprintf(formatted, sizeof(formatted), "push dword %s\n    ", tokens[i + 2].name);
                     } else {
                         snprintf(formatted, sizeof(formatted), "push %s\n    ", tokens[i + 1].name);
                     }
@@ -909,7 +934,7 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
             case TOKEN_FLOAT: break;
             case TOKEN_MOV: 
                 if (tokens[i - 2].type == TOKEN_VAR) {
-                    snprintf(formatted, sizeof(formatted), "mov dword [%s], %s\n    ", tokens[i - 1].name, tokens[i + 1].name);
+                    snprintf(formatted, sizeof(formatted), "mov dword %s, %s\n    ", tokens[i - 1].name, tokens[i + 1].name);
                 } else {
                     snprintf(formatted, sizeof(formatted), "mov %s, %s\n    ", tokens[i - 1].name, tokens[i + 1].name);
                 }
@@ -973,7 +998,7 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                             variables = addVar(variables, &var_count, t.name, (int)value, "");
                         } else {
                             if (floor(value) == value) {
-                                snprintf(formatted, sizeof(formatted), "mov dword [%s], %d\n    \n    ", t.name, (int)value);  
+                                snprintf(formatted, sizeof(formatted), "mov dword %s, %d\n    \n    ", t.name, (int)value);  
                                 switch (current_section)
                                 {
                                 case 1:
@@ -1023,7 +1048,12 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                             data = append(data, formatted);
                             variables = addVar(variables, &var_count, tokens[i + 1].name, 0, "");
                         }
-                        snprintf(formatted, sizeof(formatted), "push %s\n    call _printf\n    add esp, 4\n    push %s\n    call gets\n    add esp, 4\n    ", tokens[i + 2].name, tokens[i + 1].name);
+#ifdef _WIN32
+                            snprintf(formatted, sizeof(formatted), "push %s\n    call _printf\n    add esp, 4\n    push %s\n    call gets\n    add esp, 4\n    ", tokens[i + 2].name, tokens[i + 1].name);
+#else
+                            snprintf(formatted, sizeof(formatted), "push %s\n    call printf\n    add esp, 4\n    push %s\n    call fgets\n    add esp, 4\n    ", tokens[i + 2].name, tokens[i + 1].name);
+#endif
+                        
                         switch (current_section)
                         {
                         case 1:
@@ -1048,7 +1078,7 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                     while (current < *token_count && tokens[i + current].type != TOKEN_EOF && tokens[i + current].type != TOKEN_COM) {
                         char formatted[512];
                         if (tokens[i + current].type == TOKEN_VAR) {
-                            snprintf(formatted, sizeof(formatted), "push dword [%s]\n    ", tokens[i + current + 1].name);
+                            snprintf(formatted, sizeof(formatted), "push dword %s\n    ", tokens[i + current + 1].name);
                             current++;
                         } else {
                             snprintf(formatted, sizeof(formatted), "push %s\n    ", tokens[i + current].name);
@@ -1060,6 +1090,12 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
 
                     char formatted[512];
                     snprintf(formatted, sizeof(formatted), "%scall _printf\n    add esp, %d\n    \n    ", string, (n) * 4);
+#ifdef _WIN32
+                        snprintf(formatted, sizeof(formatted), "%scall _printf\n    add esp, %d\n    \n    ", string, (n) * 4);
+#else
+                        snprintf(formatted, sizeof(formatted), "%scall printf\n    add esp, %d\n    \n    ", string, (n) * 4);
+#endif
+
                     switch (current_section)
                     {
                     case 1:
@@ -1073,7 +1109,11 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                     i += n;
                 } else if (!strcmp(t.name, "atoi")) {
                     if (is_in_array(variables, var_count, tokens[i + 2].name) && is_in_array(variables, var_count, tokens[i + 1].name)) {
-                        snprintf(formatted, sizeof(formatted), "push %s\n    call _atoi\n    add esp, 4\n    mov [%s], eax\n    ", tokens[i + 2].name, tokens[i + 1].name);
+#ifdef _WIN32
+                            snprintf(formatted, sizeof(formatted), "push %s\n    call _atoi\n    add esp, 4\n    mov [%s], eax\n    ", tokens[i + 2].name, tokens[i + 1].name);
+#else
+                            snprintf(formatted, sizeof(formatted), "push %s\n    call atoi\n    add esp, 4\n    mov [%s], eax\n    ", tokens[i + 2].name, tokens[i + 1].name);
+#endif
                         updateVar(variables, var_count, tokens[i + 1].name, atoi(getChar(tokens[i + 2].name, variables, var_count)), tokens[i + 1].name);
                         switch (current_section)
                         {
@@ -1115,6 +1155,7 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                     }
                     text = append(text, formatted);
                     jumps = addVar(jumps, &jmp_count, tokens[i + 1].name, 0, "");
+                    i++;
 
                 } else if (!strcmp(t.name, "clr")) {
                     if (tokens[i + 1].type == TOKEN_NUMBER) {
@@ -1142,14 +1183,14 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                                 snprintf(formatted, sizeof(formatted), "push %d\n    push %d\n    call randint\n    add esp, 8\n    mov [%s], eax\n    ", tokens[i + 2].value, tokens[i + 1].value, tokens[i - 1].name);
                             } else {
                                 int rd_num = rand() % (tokens[i + 2].value - tokens[i + 1].value + 1) + tokens[i + 1].value;
-                                snprintf(formatted, sizeof(formatted), "mov dword [%s], %d\n    ", tokens[i - 1].name, rd_num);
+                                snprintf(formatted, sizeof(formatted), "mov dword %s, %d\n    ", tokens[i - 1].name, rd_num);
                             }
                         } else if (is_in_array(variables, var_count, tokens[i + 1].name) && is_in_array(variables, var_count, tokens[i + 2].name)) {
                             if (ri) {
                                 snprintf(formatted, sizeof(formatted), "push %d\n    push %d\n    call randint\n    add esp, 8\n    mov [%s], eax\n    ", getValue(tokens[i + 2].name, variables, var_count), getValue(tokens[i + 1].name, variables, var_count), tokens[i - 1].name);
                             } else {
                                 int rd_num = rand() % (getValue(tokens[i + 2].name, variables, var_count) - getValue(tokens[i + 1].name, variables, var_count) + 1) + getValue(tokens[i + 1].name, variables, var_count);
-                                snprintf(formatted, sizeof(formatted), "mov dword [%s], %d\n    ", tokens[i - 1].name, rd_num);
+                                snprintf(formatted, sizeof(formatted), "mov dword %s, %d\n    ", tokens[i - 1].name, rd_num);
                             }
                         } else {
                             errno = EINVAL;
@@ -1180,7 +1221,7 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                 // ASM
                 else if (!strcmp(t.name, "mov")) {
                     if (tokens[i + 1].type == TOKEN_VAR) {
-                        snprintf(formatted, sizeof(formatted), "mov dword [%s], %s\n    ", tokens[i + 2].name, tokens[i + 3].name);
+                        snprintf(formatted, sizeof(formatted), "mov dword %s, %s\n    ", tokens[i + 2].name, tokens[i + 3].name);
                     } else {
                         snprintf(formatted, sizeof(formatted), "mov %s, %s\n    ", tokens[i + 1].name, tokens[i + 2].name);
                     }
@@ -1363,7 +1404,7 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                     i += 3;
                 } else if (!strcmp(t.name, "xor")) {
                     if (tokens[i + 1].type == TOKEN_VAR) {
-                        snprintf(formatted, sizeof(formatted), "xor dword [%s], %s\n    ", tokens[i + 2].name, tokens[i + 3].name);
+                        snprintf(formatted, sizeof(formatted), "xor dword %s, %s\n    ", tokens[i + 2].name, tokens[i + 3].name);
                     } else {
                         snprintf(formatted, sizeof(formatted), "xor %s, %s\n    ", tokens[i + 1].name, tokens[i + 2].name);
                     }
@@ -1379,7 +1420,7 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                     } 
                 } else if (!strcmp(t.name, "try")) {
                     if (tokens[i + 1].type == TOKEN_VAR) {
-                        snprintf(formatted, sizeof(formatted), "test dword [%s], %s\n    ", tokens[i + 2].name, tokens[i + 3].name);
+                        snprintf(formatted, sizeof(formatted), "test dword %s, %s\n    ", tokens[i + 2].name, tokens[i + 3].name);
                     } else {
                         snprintf(formatted, sizeof(formatted), "test %s, %s\n    ", tokens[i + 1].name, tokens[i + 2].name);
                     }
@@ -1402,10 +1443,19 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
         }
     }
     code = append(code, "jmp exit8\n\n");
-    jmp = append(jmp, "\nexit8:\n    push 0\n    call _ExitProcess@4");
+#ifdef _WIN32
+        jmp = append(jmp, "\nexit8:push 0\n    call _ExitProcess@4\n");
+#else
+        jmp = append(jmp, "\nexit8:push 0\n    call exit\n");
+#endif
+
     data = append(data, "\n");
     df = append(df, "\n");
-    text = append(text, ", _ExitProcess@4\n\n");
+#ifdef _WIN32
+        text = append(text, ", _ExitProcess@4\n\n");
+#else
+        text = append(text, ", exit\n\n");
+#endif
 
     char* output = malloc(1);
     output[0] = '\0';
@@ -1434,6 +1484,15 @@ void generate_random_string(char *str, size_t length) {
     str[length] = '\0';
 }
 
+int file_exists(const char *filename) {
+    FILE *file = fopen(filename, "r");
+    if (file) {
+        fclose(file);
+        return 1; // Datei existiert
+    }
+    return 0; // Datei existiert nicht
+}
+
 // Main code
 int main(int argc, char *argv[]) {
     bool tok = false; // Prints tokens
@@ -1448,34 +1507,34 @@ int main(int argc, char *argv[]) {
     Token *all_tokens = malloc(sizeof(Token) * 10); // All the tokens
     int all_tokens_capacity = 10; // Total token capacity
     char error[256];
-    char asmFile[256];
-    char exeFile[256];
-    char objFile[512];
-    char output[128];
+    char asmFile[512] = {0};
+    char exeFile[512] = {0};
+    char objFile[512] = {0};
+    char output_redirect[128] = {0};
 
     /* FILENAME */
     const char *filename = NULL; 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-tok") == 0) {
             tok = true;
-        } if (strcmp(argv[i], "-nw") == 0) {
+        } else if (strcmp(argv[i], "-nw") == 0) {
             noWarning = true;
-        } if (strcmp(argv[i], "-asm") == 0) {
+        } else if (strcmp(argv[i], "-asm") == 0) {
             a = true;
-        } if (strcmp(argv[i], "-o") == 0) {
+        } else if (strcmp(argv[i], "-o") == 0) {
             o = true;
-        } if (strcmp(argv[i], "-nc") == 0) {
+        } else if (strcmp(argv[i], "-nc") == 0) {
             noconsole = true;
-        } if (strcmp(argv[i], "-gop") == 0) {
+        } else if (strcmp(argv[i], "-gop") == 0) {
             opt = true;
         } else if (argv[i][0] != '-') {
             filename = argv[i];
         }
     }
 
-    // Help if filename was not found
+    /* Help if filename was not found */
     if (!filename) {
-        fprintf(stderr, "Usage: %s <inputfile> [-tok] [-asm] [-nw]", argv[0]);
+        fprintf(stderr, "Usage: %s <inputfile> [-tok] [-asm] [-nw] [-o] [-nc] [-gop]\n", argv[0]);
         goto cleanup;
     }
 
@@ -1484,33 +1543,39 @@ int main(int argc, char *argv[]) {
     FILE *file = fopen(filename, "r");
     if (!file) {
         errno = ENOENT;
-        snprintf(error, sizeof(error), RED "Error: Failed to open file | '%S'" RESET, filename);
+        snprintf(error, sizeof(error), "Error: Failed to open file | '%s'", filename);
         perror(error);
         goto cleanup;
     } 
 
-    /* Maximum capacity of the file */
+    /* Read file into lines */
     char *inputs[MAX_LINES];
     int count = 0;
     char buffer[MAX_LINE_LEN];
 
-    /* gets content of the file */
     while (fgets(buffer, sizeof(buffer), file) && count < MAX_LINES) {
-        buffer[strcspn(buffer, "\n")] = 0; // Zeilenumbruch entfernen
-        inputs[count] = strdup(buffer);    // Zeile kopieren
+        buffer[strcspn(buffer, "\n")] = 0; // remove newline
+        inputs[count] = strdup(buffer);
         count++;
     }
-    fclose(file); // Closes file
+    fclose(file);
+    file = NULL;
 
-    
+    /* tokenisieren */
     int input_count = count;
     for (int i = 0; i < input_count; i++) {
         int token_count = 0;
         Token *tokens = inter(inputs[i], &token_count, tok, &ri, &bss);
+        if (!tokens) continue;
 
         if (total_token_count + token_count > all_tokens_capacity) {
             all_tokens_capacity *= 2;
             all_tokens = realloc(all_tokens, sizeof(Token) * all_tokens_capacity);
+            if (!all_tokens) {
+                fprintf(stderr, "Memory allocation failed\n");
+                free(tokens);
+                goto cleanup;
+            }
         }
 
         for (int j = 0; j < token_count; j++) {
@@ -1519,137 +1584,200 @@ int main(int argc, char *argv[]) {
         free(tokens);
     }
 
+    /* parser/emit */
     char* incl = malloc(1); 
+    if (!incl) goto cleanup;
     incl[0] = '\0'; 
     char* code = parser(all_tokens, &total_token_count, &incl, noWarning, ri, bss); // NASM-code
 
-    if (code == NULL) {goto cleanup;}
-    if (opt) {
-        snprintf(output, sizeof(output), "%s", "");
-    } else {
-        snprintf(output, sizeof(output), "%s", ">nul 2>&1");
-    }
+    if (code == NULL) { goto cleanup; }
 
+    /* output redirect string */
+#ifdef _WIN32
+    if (opt) {
+        snprintf(output_redirect, sizeof(output_redirect), "%s", "");
+    } else {
+        snprintf(output_redirect, sizeof(output_redirect), "%s", ">nul 2>&1");
+    }
+#else
+    if (opt) {
+        snprintf(output_redirect, sizeof(output_redirect), "%s", "");
+    } else {
+        snprintf(output_redirect, sizeof(output_redirect), "%s", "> /dev/null 2>&1");
+    }
+#endif
+
+    /* --- Option: write .asm file and exit --- */
     if (a) {
         char formatted[512];
-        /* Makes new file name */
         if (len >= 4 && strcmp(filename + len - 4, ".qwr") == 0) {
             strncpy(formatted, filename, len - 4);
             formatted[len - 4] = '\0';
         } else {
             strncpy(formatted, filename, sizeof(formatted) - 1);
-            formatted[sizeof(formatted) - 1] = '\0'; // Sicherheitshalber nullterminieren
+            formatted[sizeof(formatted) - 1] = '\0';
         }
 
-        /* Creating new file */
         strncat(formatted, ".asm", sizeof(formatted) - strlen(formatted) - 1);
         FILE *datei = fopen(formatted, "w");
         if (!datei) {
-            fclose(datei);
             errno = EINVAL;
-            perror(RED "Error: File was not created" RESET);
+            perror("Error: File was not created");
             goto cleanup;
         }
-        fputs(code, datei);  // Code in Datei schreiben
+        fputs(code, datei);
         fclose(datei);
-    } else if (o) {
+    }
+    /* --- Option: build to specific EXE name (-o) --- */
+    else if (o) {
         char name[512];
-        char asmFile[512];
-        char exeFile[512];
+        char asm_out[512];
+        char exe_out[512];
+        char obj_out[512];
 
         if (len >= 4 && strcmp(filename + len - 4, ".qwr") == 0) {
             strncpy(name, filename, len - 4);
             name[len - 4] = '\0';
         } else {
             errno = ENOENT;
-            perror(RED "Error: Failed to create EXE" RESET);
+            perror("Error: Failed to create EXE");
             goto cleanup;
         }
 
-        snprintf(asmFile, sizeof(asmFile), "%s.asm", name);
-        snprintf(exeFile, sizeof(exeFile), "%s.exe", name);
+#ifdef _WIN32
+        snprintf(asm_out, sizeof(asm_out), "%s.asm", name);
+        snprintf(exe_out, sizeof(exe_out), "%s.exe", name);
+        snprintf(obj_out, sizeof(obj_out), "%s.obj", name);
+#else
+        snprintf(asm_out, sizeof(asm_out), "%s.asm", name);
+        snprintf(exe_out, sizeof(exe_out), "%s", name);
+        snprintf(obj_out, sizeof(obj_out), "%s.o", name);
+#endif
 
-        FILE *asmf = fopen(asmFile, "w");
+        FILE *asmf = fopen(asm_out, "w");
+        if (!asmf) { perror("Error creating asm file"); goto cleanup; }
         fputs(code, asmf);
         fclose(asmf);
 
-        char nasmCmd[1024]; 
-        char golinkCmd[1024];
-        snprintf(objFile, sizeof(objFile), "%s.obj", name);
+        char nasmCmd[2048];
+        char linkCmd[2048];
 
-        snprintf(nasmCmd, sizeof(nasmCmd), "nasm -f win32 \"%s\" -o \"%s.obj\"", asmFile, name);
+#ifdef _WIN32
+        snprintf(nasmCmd, sizeof(nasmCmd), "nasm -f win32 \"%s\" -o \"%s\"", asm_out, obj_out);
         if (noconsole) {
-            snprintf(golinkCmd, sizeof(golinkCmd), "GoLink /entry _start /mix \"%s.obj\" %s kernel32.dll user32.dll msvcrt.dll %s", name, incl, output);
+            snprintf(linkCmd, sizeof(linkCmd), "GoLink /entry _start /mix \"%s\" %s kernel32.dll user32.dll msvcrt.dll %s", obj_out, incl, output_redirect);
         } else {
-            snprintf(golinkCmd, sizeof(golinkCmd), "GoLink /console /entry _start /mix \"%s.obj\" %s kernel32.dll user32.dll msvcrt.dll %s", name, incl, output);
-
+            snprintf(linkCmd, sizeof(linkCmd), "GoLink /console /entry _start /mix \"%s\" %s kernel32.dll user32.dll msvcrt.dll %s", obj_out, incl, output_redirect);
         }
-        
+#else
+        snprintf(nasmCmd, sizeof(nasmCmd), "nasm -f elf32 \"%s\" -o \"%s\"", asm_out, obj_out);
+        /* Use gcc to link so libc is linked automatically; -m32 assumes 32-bit object */
+        if (noconsole) {
+            snprintf(linkCmd, sizeof(linkCmd), "gcc -m32 \"%s\" -o \"%s\" %s", obj_out, exe_out, output_redirect);
+        } else {
+            snprintf(linkCmd, sizeof(linkCmd), "gcc -m32 \"%s\" -o \"%s\" %s", obj_out, exe_out, output_redirect);
+        }
+#endif
+
         if (system(nasmCmd) != 0) {
-            fprintf(stderr, RED "Error: NASM assembly failed\n" RESET);
+            fprintf(stderr, "Error: NASM assembly failed\n");
             goto cleanup;
         }
-        
-        if (system(golinkCmd) != 0) {
-            fprintf(stderr, RED "Error: GoLink linking failed\n" RESET);
-            goto cleanup;
-        }
-        remove(objFile);
-        remove(asmFile);
 
-    } else {
+        if (system(linkCmd) != 0) {
+            fprintf(stderr, "Error: Linking failed\n");
+            goto cleanup;
+        }
+
+        /* cleanup generated intermediate files */
+        if (file_exists(obj_out)) remove(obj_out);
+        if (file_exists(asm_out)) remove(asm_out);
+    }
+    /* --- Default: create temp files, assemble, link, run, cleanup --- */
+    else {
         srand((unsigned int) time(NULL));
-        char uuid_str[33];  // 32 Zeichen + Null-Terminierung
+        char uuid_str[33];  /* 32 chars + NUL */
         generate_random_string(uuid_str, 32);
-        snprintf(objFile, sizeof(objFile), "%s\\%s.obj", getenv("TEMP"), uuid_str);
-        snprintf(asmFile, sizeof(asmFile), "%s\\%s.asm", getenv("TEMP"), uuid_str);
-        snprintf(exeFile, sizeof(exeFile), "%s\\%s.exe", getenv("TEMP"), uuid_str);
+
+#ifdef _WIN32
+        const char *tmpdir = getenv("TEMP");
+        if (!tmpdir) tmpdir = ".";
+        snprintf(objFile, sizeof(objFile), "%s\\%s.obj", tmpdir, uuid_str);
+        snprintf(asmFile, sizeof(asmFile), "%s\\%s.asm", tmpdir, uuid_str);
+        snprintf(exeFile, sizeof(exeFile), "%s\\%s.exe", tmpdir, uuid_str);
+#else
+        const char *tmpdir = getenv("TMPDIR");
+        if (!tmpdir) tmpdir = "/tmp";
+        snprintf(objFile, sizeof(objFile), "%s/%s.o", tmpdir, uuid_str);
+        snprintf(asmFile, sizeof(asmFile), "%s/%s.asm", tmpdir, uuid_str);
+        snprintf(exeFile, sizeof(exeFile), "%s/%s", tmpdir, uuid_str);
+#endif
 
         FILE *asmf = fopen(asmFile, "w");
+        if (!asmf) { perror("Error creating temporary asm file"); goto cleanup; }
         fputs(code, asmf);
         fclose(asmf);
 
-        char nasmCmd[1024]; 
-        char golinkCmd[1024];
+        char nasmCmd[2048];
+        char linkCmd[2048];
 
+#ifdef _WIN32
         snprintf(nasmCmd, sizeof(nasmCmd), "nasm -f win32 \"%s\" -o \"%s\"", asmFile, objFile);
         if (noconsole) {
-            snprintf(golinkCmd, sizeof(golinkCmd), "GoLink /entry _start /mix \"%s\" %s kernel32.dll user32.dll msvcrt.dll %s", objFile, incl, output);
+            snprintf(linkCmd, sizeof(linkCmd), "GoLink /entry _start /mix \"%s\" %s kernel32.dll user32.dll msvcrt.dll %s", objFile, incl, output_redirect);
         } else {
-            snprintf(golinkCmd, sizeof(golinkCmd), "GoLink /console /entry _start /mix \"%s\" %s kernel32.dll user32.dll msvcrt.dll %s", objFile, incl, output);
-
+            snprintf(linkCmd, sizeof(linkCmd), "GoLink /console /entry _start /mix \"%s\" %s kernel32.dll user32.dll msvcrt.dll %s", objFile, incl, output_redirect);
         }
-        
+#else
+        snprintf(nasmCmd, sizeof(nasmCmd), "nasm -f elf32 \"%s\" -o \"%s\"", asmFile, objFile);
+        snprintf(linkCmd, sizeof(linkCmd), "gcc -m32 \"%s\" -o \"%s\" %s", objFile, exeFile, output_redirect);
+#endif
+
         if (system(nasmCmd) != 0) {
-            fprintf(stderr, RED "Error: NASM assembly failed\n" RESET);
-            goto cleanup;
-        }
-        
-        if (system(golinkCmd) != 0) {
-            fprintf(stderr, RED "Error: GoLink linking failed\n" RESET);
+            fprintf(stderr, "Error: NASM assembly failed\n");
             goto cleanup;
         }
 
-        system(exeFile);
+        if (system(linkCmd) != 0) {
+            fprintf(stderr, "Error: Linking failed\n");
+            goto cleanup;
+        }
 
-        // Clear
-        remove(asmFile);
-        remove(objFile);
-        remove(exeFile);
+        /* run the program */
+#ifdef _WIN32
+        /* Windows: system() can run the .exe directly */
+        if (system(exeFile) != 0) {
+            /* Non-zero return is allowed; don't abort cleanup */
+        }
+#else
+        /* Make sure executable bit is set */
+        chmod(exeFile, 0755);
+        if (system(exeFile) != 0) {
+            /* Non-zero return is allowed; don't abort cleanup */
+        }
+#endif
+
+        /* Clear temporary files */
+        if (file_exists(asmFile)) remove(asmFile);
+        if (file_exists(objFile)) remove(objFile);
+        if (file_exists(exeFile)) remove(exeFile);
     }
 
 cleanup:
-    if (access(asmFile, F_OK) == 0) remove(asmFile);
-    if (access(objFile, F_OK) == 0) remove(objFile);
-    if (access(exeFile, F_OK) == 0) remove(exeFile);
+    /* Try to remove any leftover files (best-effort) */
+    if (asmFile[0]) { if (file_exists(asmFile)) remove(asmFile); }
+    if (objFile[0]) { if (file_exists(objFile)) remove(objFile); }
+    if (exeFile[0]) { if (file_exists(exeFile)) remove(exeFile); }
+
     if (all_tokens) free(all_tokens);
     if (inputs) {
         for (int i = 0; i < count; i++) {
-            free(inputs[i]);
+            if (inputs[i]) free(inputs[i]);
         }
     }
     if (code) free(code);
     if (file) fclose(file);
     if (incl) free(incl);
+
     return 0;
 }

@@ -1,5 +1,0 @@
-include '_MessageBoxA@16'
-
-title. "Title"
-msg. "Hello World!"
-+{0} +title +msg +{0} @'_MessageBoxA@16'
