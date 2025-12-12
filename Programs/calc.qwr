@@ -1,7 +1,2 @@
-dq a. 2.2
-dq b. 5.2
-dq c. 0
-dq add (a) (b). (c)
-
-fmt. "Value: %.2f"
-print #(c+4) #(c) fmt
+a. 2
+math a + 3 
