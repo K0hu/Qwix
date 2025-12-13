@@ -9,6 +9,12 @@
 #include "tinyexpr.h"
 #include <math.h>
 
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <sys/time.h>
+#endif
+
 #define MAX_LINES 1000
 #define MAX_LINE_LEN 1000
 
@@ -80,7 +86,7 @@ typedef enum {
     TOKEN_FLOAT,
     TOKEN_CALL,
     TOKEN_MOV
-} TokenType;
+} QTokenType;
 
 typedef enum {
     REG_EAX,
@@ -96,14 +102,14 @@ typedef enum {
 
 // Type of variables
 typedef enum {
-    FLOAT,
-    INT,
+    TOK_FLOAT,
+    TOK_INT,
     STR
 } Type;
 
 // Token structures
 typedef struct {
-    TokenType type;
+    QTokenType type;
     int value;
     char name[128];
     Type dif;
@@ -187,7 +193,7 @@ Token get_next_token(const char **input) {
         }
         Token t = { TOKEN_NUMBER, value };
         snprintf(t.name, sizeof(t.name), "%d", value);
-        t.dif = INT;
+        t.dif = TOK_INT;
         return t;
     }
 
@@ -305,7 +311,7 @@ Token get_next_token(const char **input) {
         if (**input == quote) (*input)++;
         Token t = { TOKEN_INT, 0 };
         strncpy(t.name, buffer, 127);
-        t.dif = INT;
+        t.dif = TOK_INT;
         return t;
     }
 
@@ -385,7 +391,7 @@ Token get_next_token(const char **input) {
 }
 
 // Token to string
-const char* pToken(TokenType type) {
+const char* pToken(QTokenType type) {
     switch (type) {
         case TOKEN_NUMBER: return "NUMBER";
         case TOKEN_EOF: return "EOF";
@@ -404,7 +410,7 @@ const char* pToken(TokenType type) {
         case TOKEN_STR: return "STR";
         case TOKEN_SCMP: return "SCMP";
         case TOKEN_INC: return "INC";
-        case TOKEN_INT:   return "INT";
+        case TOKEN_INT:   return "TOK_INT";
         default: return "INVALID";
     }
 }
@@ -662,7 +668,7 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                         break;
                     }
                 } else {
-                    if (tokens[i + 1].dif == INT) {
+                    if (tokens[i + 1].dif == TOK_INT) {
                         char* expr = tokens[i + 1].name;
                         replace_all_vars(expr, variables, var_count);
                         double value = te_interp(expr, 0);
@@ -955,10 +961,10 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                     replace_all_vars(expr, variables, var_count);
                     value = te_interp(expr, 0);
                 } else {
-                    value = (tokens[i + 2].dif == INT) ? tokens[i + 2].value : atoi(tokens[i + 2].name);
+                    value = (tokens[i + 2].dif == TOK_INT) ? tokens[i + 2].value : atoi(tokens[i + 2].name);
                 }
                 
-                if (tokens[i + 2].dif == INT) {
+                if (tokens[i + 2].dif == TOK_INT) {
                     snprintf(formatted, sizeof(formatted), "%s resd %d\n    ", tokens[i + 1].name, tokens[i + 2].value);
                 }  else {
                     snprintf(formatted, sizeof(formatted), "%s resb %s\n    ", tokens[i + 1].name, tokens[i + 2].name);
@@ -976,12 +982,12 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                         current_section = 1;
                         jumps = addVar(jumps, &jmp_count, t.name, 0, "");
                         i += 2;
-                    } else if (tokens[i + 2].dif == INT && !strcmp(tokens[i - 1].name, "dq")) {
+                    } else if (tokens[i + 2].dif == TOK_INT && !strcmp(tokens[i - 1].name, "dq")) {
                         char formatted[512];
                         snprintf(formatted, sizeof(formatted), "%s dq %s.%s\n    ", t.name, tokens[i + 2].name, tokens[i + 3].type == TOKEN_DEF ? tokens[i + 4].name : "0");
                         data = append(data, formatted);
                         variables = addVar(variables, &var_count, t.name, (int)value, "");
-                    } else if (tokens[i + 2].dif == INT) { // Definition eines Int.
+                    } else if (tokens[i + 2].dif == TOK_INT) { // Definition eines Int.
                         double value;
                         char formatted[512];
                         if (tokens[i + 2].type == TOKEN_INT) {    
@@ -1444,9 +1450,9 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
     }
     code = append(code, "jmp exit8\n\n");
 #ifdef _WIN32
-        jmp = append(jmp, "\nexit8:push 0\n    call _ExitProcess@4\n");
+        jmp = append(jmp, "\nexit8:\n    push 0\n    call _ExitProcess@4\n");
 #else
-        jmp = append(jmp, "\nexit8:push 0\n    call exit\n");
+        jmp = append(jmp, "\nexit8:\n    push 0\n    call exit\n");
 #endif
 
     data = append(data, "\n");
@@ -1493,6 +1499,19 @@ int file_exists(const char *filename) {
     return 0; // Datei existiert nicht
 }
 
+double get_time_sec() {
+#ifdef _WIN32
+    LARGE_INTEGER freq, counter;
+    QueryPerformanceFrequency(&freq);
+    QueryPerformanceCounter(&counter);
+    return (double)counter.QuadPart / (double)freq.QuadPart;
+#else
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return tv.tv_sec + tv.tv_usec / 1e6;
+#endif
+}
+
 // Main code
 int main(int argc, char *argv[]) {
     bool tok = false; // Prints tokens
@@ -1502,6 +1521,7 @@ int main(int argc, char *argv[]) {
     bool ri = false;
     bool bss = false;
     bool opt = false;
+    bool info = false;
     bool noconsole = false;
     int total_token_count = 0; // Total token count
     Token *all_tokens = malloc(sizeof(Token) * 10); // All the tokens
@@ -1511,6 +1531,7 @@ int main(int argc, char *argv[]) {
     char exeFile[512] = {0};
     char objFile[512] = {0};
     char output_redirect[128] = {0};
+    double start_time = 0;
 
     /* FILENAME */
     const char *filename = NULL; 
@@ -1527,6 +1548,8 @@ int main(int argc, char *argv[]) {
             noconsole = true;
         } else if (strcmp(argv[i], "-gop") == 0) {
             opt = true;
+        } else if (strcmp(argv[i], "-in") == 0) {
+            info = true;
         } else if (argv[i][0] != '-') {
             filename = argv[i];
         }
@@ -1534,9 +1557,11 @@ int main(int argc, char *argv[]) {
 
     /* Help if filename was not found */
     if (!filename) {
-        fprintf(stderr, "Usage: %s <inputfile> [-tok] [-asm] [-nw] [-o] [-nc] [-gop]\n", argv[0]);
+        fprintf(stderr, "Usage: %s <inputfile> [-tok] [-asm] [-nw] [-o] [-nc] [-gop] [-in]\n", argv[0]);
         goto cleanup;
     }
+
+    if (info) {start_time = get_time_sec();}
 
     /* OPEN FILE */
     size_t len = strlen(filename);
@@ -1678,7 +1703,7 @@ int main(int argc, char *argv[]) {
             snprintf(linkCmd, sizeof(linkCmd), "gcc -m32 \"%s\" -o \"%s\" %s", obj_out, exe_out, output_redirect);
         }
 #endif
-
+        
         if (system(nasmCmd) != 0) {
             fprintf(stderr, "Error: NASM assembly failed\n");
             goto cleanup;
@@ -1761,6 +1786,11 @@ int main(int argc, char *argv[]) {
         if (file_exists(asmFile)) remove(asmFile);
         if (file_exists(objFile)) remove(objFile);
         if (file_exists(exeFile)) remove(exeFile);
+    }
+
+    if (info) {
+        double end_time = get_time_sec();
+        printf("\n----------[ FINISH ]---------\nCompiling took %.2f seconds.\n", end_time - start_time);
     }
 
 cleanup:
