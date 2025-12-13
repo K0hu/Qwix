@@ -1714,6 +1714,11 @@ int main(int argc, char *argv[]) {
             goto cleanup;
         }
 
+        if (info) {
+            double end_time = get_time_sec();
+            printf("\n----------[ FINISH ]---------\nCompiling took %.2f seconds.\n", end_time - start_time);
+        }
+
         /* cleanup generated intermediate files */
         if (file_exists(obj_out)) remove(obj_out);
         if (file_exists(asm_out)) remove(asm_out);
@@ -1768,6 +1773,11 @@ int main(int argc, char *argv[]) {
             goto cleanup;
         }
 
+        if (info) {
+            double end_time = get_time_sec();
+            printf("\n----------[ FINISH ]---------\nCompiling took %.2f seconds.\n", end_time - start_time);
+        }
+
         /* run the program */
 #ifdef _WIN32
         /* Windows: system() can run the .exe directly */
@@ -1786,11 +1796,6 @@ int main(int argc, char *argv[]) {
         if (file_exists(asmFile)) remove(asmFile);
         if (file_exists(objFile)) remove(objFile);
         if (file_exists(exeFile)) remove(exeFile);
-    }
-
-    if (info) {
-        double end_time = get_time_sec();
-        printf("\n----------[ FINISH ]---------\nCompiling took %.2f seconds.\n", end_time - start_time);
     }
 
 cleanup:
