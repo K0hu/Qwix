@@ -102,9 +102,11 @@ typedef enum {
 
 // Type of variables
 typedef enum {
+    TOK_DOUBLE,
     TOK_FLOAT,
     TOK_INT,
-    STR
+    TOK_STR,
+    TOK_UND
 } Type;
 
 // Token structures
@@ -120,6 +122,7 @@ typedef struct {
     char name[32];
     int value;
     char* text;
+    Type type;
 } Variable;
 
 typedef struct {
@@ -166,11 +169,12 @@ void updateVar(Variable* vars, int count, const char* name, int value, char* tex
 }
 
 // Adds var to list
-Variable* addVar(Variable* vars, int *count, const char* name, int value, char* text) {
+Variable* addVar(Variable* vars, int *count, const char* name, int value, char* text, Type type) {
     vars = realloc(vars, sizeof(Variable) * (*count + 1));
     strcpy(vars[*count].name, name);
     vars[*count].value = value;
     vars[*count].text = text;
+    vars[*count].type = type
     (*count)++;
     return vars;
 }
@@ -241,7 +245,7 @@ Token get_next_token(const char **input) {
         if (**input == quote) {(*input)++;} else {perror(RED "Error: Syntax error near string" RESET);} // schließendes Anführungszeichen überspringen
         Token t = { TOKEN_STR, 0 };
         strncpy(t.name, buffer, 127);
-        t.dif = STR;
+        t.dif = TOK_STR;
         return t;
     }
 
@@ -497,7 +501,7 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
 
     Variable* variables = NULL;
     int var_count = 0;
-    variables = addVar(variables, &var_count, "eax", 0, "");
+    variables = addVar(variables, &var_count, "eax", 0, "", TOK_UND);
     int EOF_counter = 1;
 
     Variable* jumps = NULL;
@@ -602,15 +606,6 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                 t.value = (int)value3;
                 break;
             case TOKEN_VAR:  
-                char* expr = tokens[i + 2].name;
-                replace_all_vars(expr, variables, var_count);
-                double value = te_interp(expr, 0);
-                snprintf(tokens[i + 2].name, sizeof(tokens[i + 2].name), "%d", (int)value);
-                if (tokens[i + 1].type == TOKEN_DEF) {
-                    updateVar(variables, var_count, tokens[i + 1].name, atoi(tokens[i + 2].name), tokens[i + 3].name);
-                } else {
-                    variables = addVar(variables, &var_count, tokens[i + 1].name, atoi(tokens[i + 2].name), tokens[i + 3].name);
-                }
                 break;
             case TOKEN_EOF: EOF_counter++; break;
             case TOKEN_END: 
@@ -970,23 +965,23 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                     snprintf(formatted, sizeof(formatted), "%s resb %s\n    ", tokens[i + 1].name, tokens[i + 2].name);
                 }
                 
-                variables = addVar(variables, &var_count, tokens[i + 1].name, 0, "");
+                variables = addVar(variables, &var_count, tokens[i + 1].name, 0, "", TOK_UND);
                 bss = append(bss, formatted);
                 break;
             case TOKEN_CLAMP: break;
             case TOKEN_UNKNOWN:
                 if (tokens[i + 1].type == TOKEN_DEF) { // Wenn es eine Definition
-                    if (tokens[i + 2].type == TOKEN_JMP) {
+                    if (tokens[i + 2].type == TOKEN_JMP) { // Jump
                         snprintf(formatted, sizeof(formatted), "\n%s:\n    ", t.name);
                         jmp = append(jmp, formatted);
                         current_section = 1;
-                        jumps = addVar(jumps, &jmp_count, t.name, 0, "");
+                        jumps = addVar(jumps, &jmp_count, t.name, 0, "", TOK_UND);
                         i += 2;
                     } else if (tokens[i + 2].dif == TOK_INT && !strcmp(tokens[i - 1].name, "dq")) {
                         char formatted[512];
                         snprintf(formatted, sizeof(formatted), "%s dq %s.%s\n    ", t.name, tokens[i + 2].name, tokens[i + 3].type == TOKEN_DEF ? tokens[i + 4].name : "0");
                         data = append(data, formatted);
-                        variables = addVar(variables, &var_count, t.name, (int)value, "");
+                        variables = addVar(variables, &var_count, t.name, (int)value, "", TOK_DOUBLE);
                     } else if (tokens[i + 2].dif == TOK_INT) { // Definition eines Int.
                         double value;
                         char formatted[512];
@@ -1001,7 +996,7 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                         if (!is_in_array(variables, var_count, t.name)) {
                             snprintf(formatted, sizeof(formatted), (floor(value) == value) ? "%s dd %.0f\n    " : "%s dq %f\n    ", t.name, value);
                             data = append(data, formatted);
-                            variables = addVar(variables, &var_count, t.name, (int)value, "");
+                            variables = addVar(variables, &var_count, t.name, (int)value, "", (floor(value) == value) ? TOK_INT : TOK_DOUBLE);
                         } else {
                             if (floor(value) == value) {
                                 snprintf(formatted, sizeof(formatted), "mov dword %s, %d\n    \n    ", t.name, (int)value);  
@@ -1034,15 +1029,15 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                         }
                         i += 2;
                         data = append(data, formatted);
-                        variables = addVar(variables, &var_count, t.name, 0, string);
+                        variables = addVar(variables, &var_count, t.name, 0, string, TOK_STR);
                     } else if (tokens[i + 2].type == TOKEN_VAR) {
                         snprintf(formatted, sizeof(formatted), "%s db %s dup(0)\n    ", t.name, tokens[i + 3].name);
                         data = append(data, formatted);
-                        variables = addVar(variables, &var_count, t.name, atoi(tokens[i + 3].name), tokens[i + 3].name);
+                        variables = addVar(variables, &var_count, t.name, atoi(tokens[i + 3].name), tokens[i + 3].name, TOK_STR);
                     } else if (tokens[i + 2].type == TOKEN_ECLAM) {
                         snprintf(formatted, sizeof(formatted), "%s dd %s\n    ", t.name, tokens[i + 2].name);
                         data = append(data, formatted);
-                        variables = addVar(variables, &var_count, t.name, 0, tokens[i + 2].name);
+                        variables = addVar(variables, &var_count, t.name, 0, tokens[i + 2].name, TOK_UND);
                     }
                 }
                 /*  CMD/Built-ins  */
@@ -1052,7 +1047,7 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                         if (!is_in_array(variables, var_count, tokens[i + 1].name)) {
                             snprintf(formatted, sizeof(formatted), "%s db 128 dup(0)\n    ", tokens[i + 1].name);
                             data = append(data, formatted);
-                            variables = addVar(variables, &var_count, tokens[i + 1].name, 0, "");
+                            variables = addVar(variables, &var_count, tokens[i + 1].name, 0, "", TOK_STR);
                         }
 #ifdef _WIN32
                             snprintf(formatted, sizeof(formatted), "push %s\n    call _printf\n    add esp, 4\n    push %s\n    call gets\n    add esp, 4\n    ", tokens[i + 2].name, tokens[i + 1].name);
@@ -1087,7 +1082,11 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                             snprintf(formatted, sizeof(formatted), "push dword %s\n    ", tokens[i + current + 1].name);
                             current++;
                         } else {
-                            snprintf(formatted, sizeof(formatted), "push %s\n    ", tokens[i + current].name);
+                            if (!strcmp(tokens[i + current].name, "dq")) {
+                                snprintf(formatted, sizeof(formatted), "push dword [%s+4]\n    push dword [%s]\n    ", tokens[i + current].name);
+                            } else {
+                                snprintf(formatted, sizeof(formatted), "push %s\n    ", tokens[i + current].name);
+                            }
                         }
                         string = append(string, formatted);
                         n++;
@@ -1160,7 +1159,7 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                         snprintf(formatted, sizeof(formatted), ", %s", tokens[i + 1].name);
                     }
                     text = append(text, formatted);
-                    jumps = addVar(jumps, &jmp_count, tokens[i + 1].name, 0, "");
+                    jumps = addVar(jumps, &jmp_count, tokens[i + 1].name, 0, "", TOK_UND);
                     i++;
 
                 } else if (!strcmp(t.name, "clr")) {
