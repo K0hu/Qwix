@@ -23,7 +23,7 @@
 
 ## What is Qwix?
 Qwix is ​​a minimalist (low level) programming language implemented in C. 
-Code in qwix is compiled to NASM code (then with the NASM and GoLink compiled to an executeble).
+Code in qwix is compiled to NASM code (then with the NASM and GoLink compiled to an executeble/elf).
 
 ## Variables
 - ```|var 0-9/"0-9"```: Allocation in the .bss segment. With "" can be strings reserved. <br>
