@@ -86,6 +86,7 @@ a%b ?jump
 How in the introduction mentioned qwix is based on nasm/assembly. 
 Assembly code can be written direct in qwix with ```~asm code... (~)``` this can be done (its optional to close is). 
 - ```mov```, ```try```, ```xor```: can be used like in asm but without the ```,```.
+> mov can also used with an equal symbol (```par = par```) 
 
 # Compiler
 The compiler uses Nasm and GoLink to make it an executeble. It has different options:
