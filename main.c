@@ -970,6 +970,39 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                 break;
             case TOKEN_CLAMP: break;
             case TOKEN_UNKNOWN:
+                if ((tokens[i + 2].type == TOKEN_DEF)) {
+                    switch (t.name) {
+                        case "dbl": 
+                            variables = addVar(variables, &var_count, tokens[i+1].name, 0, tokens[i + 2].name, TOK_DOUBLE);
+                            snprintf(formatted, sizeof(formatted), "%s dq %s, 0\n    ", tokens[i + 1].name, tokens[i + 2].name);
+                            data = append(data, formatted);
+                            break;
+                        case "int":
+                            variables = addVar(variables, &var_count, tokens[i+1].name, 0, tokens[i + 2].name, TOK_INT);
+                            snprintf(formatted, sizeof(formatted), "%s dd %s, 0\n    ", tokens[i + 1].name, tokens[i + 2].name); 
+                            data = append(data, formatted);
+                            break;
+                        case "str": 
+                            variables = addVar(variables, &var_count, tokens[i+1].name, 0, tokens[i + 2].name, TOK_STR);
+                            snprintf(formatted, sizeof(formatted), "%s db \"%s\", 0\n    ", tokens[i + 1].name, tokens[i + 2].name); 
+                            data = append(data, formatted);
+                            break;
+                        case "lng":
+                            variables = addVar(variables, &var_count, tokens[i+1].name, 0, tokens[i + 2].name, TOK_DOUBLE);
+                            snprintf(formatted, sizeof(formatted), "%s dt %s, 0\n    ", tokens[i + 1].name, tokens[i + 2].name); 
+                            data = append(data, formatted);
+                            break;
+                        case "dwr":
+                            variables = addVar(variables, &var_count, tokens[i+1].name, 0, tokens[i + 2].name, TOK_DOUBLE);
+                            snprintf(formatted, sizeof(formatted), "%s dw %s, 0\n    ", tokens[i + 1].name, tokens[i + 2].name); 
+                            data = append(data, formatted);
+                            break;
+                        default: break;
+                    }
+                    
+                }
+                
+
                 if (tokens[i + 1].type == TOKEN_DEF) { // Wenn es eine Definition
                     if (tokens[i + 2].type == TOKEN_JMP) { // Jump
                         snprintf(formatted, sizeof(formatted), "\n%s:\n    ", t.name);
