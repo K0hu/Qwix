@@ -1116,6 +1116,7 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                             current++;
                         } else {
                             if (!strcmp(tokens[i + current].name, "dq")) {
+                                current++;
                                 snprintf(formatted, sizeof(formatted), "push dword [%s+4]\n    push dword [%s]\n    ", tokens[i + current].name);
                             } else {
                                 snprintf(formatted, sizeof(formatted), "push %s\n    ", tokens[i + current].name);
