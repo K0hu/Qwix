@@ -8,6 +8,7 @@
 #include <libgen.h>
 #include "tinyexpr.h"
 #include <math.h>
+#include <errno.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -174,7 +175,7 @@ Variable* addVar(Variable* vars, int *count, const char* name, int value, char* 
     strcpy(vars[*count].name, name);
     vars[*count].value = value;
     vars[*count].text = text;
-    vars[*count].type = type
+    vars[*count].type = type;
     (*count)++;
     return vars;
 }
@@ -507,6 +508,9 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
     Variable* jumps = NULL;
     int jmp_count = 0;
 
+    char* expr;
+    double value;
+
     int current_section = 0;
     srand(time(NULL));
 
@@ -591,19 +595,19 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                 }
                 break;
             case TOKEN_MCLAM:   
-                char* expr2 = t.name;
-                replace_all_vars(expr2, variables, var_count);
-                double value2 = te_interp(expr2, 0);
+                expr = t.name;
+                replace_all_vars(expr, variables, var_count);
+                double value2 = te_interp(expr, 0);
                 snprintf(t.name, sizeof(t.name), "%d", (int)value2);
                 break;
             case TOKEN_COM:   break;
             case TOKEN_NUMBER:  break;
             case TOKEN_INT: 
-                char* expr3 = t.name;
-                replace_all_vars(expr3, variables, var_count);
-                double value3 = te_interp(expr3, 0);
-                snprintf(t.name, sizeof(t.name), "%d", (int)value3);
-                t.value = (int)value3;
+                expr = t.name;
+                replace_all_vars(expr, variables, var_count);
+                value = te_interp(expr, 0);
+                snprintf(t.name, sizeof(t.name), "%d", (int)value);
+                t.value = (int)value;
                 break;
             case TOKEN_VAR:  
                 break;
@@ -622,7 +626,7 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                 break;
                 break;
             case TOKEN_TAB: break;
-            case TOKEN_ECLAM: 
+            case TOKEN_ECLAM: {
                 char* rpush = malloc(1); 
                 rpush[0] = '\0';
                 char * push = strtok(t.name, ",");
@@ -650,6 +654,7 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                     break;
                 }
                 break;
+            }
             case TOKEN_POP: 
                 if ((tokens[i + 1].type == TOKEN_EOF || tokens[i + 1].type == TOKEN_COM)) {
                     switch (current_section)
@@ -664,9 +669,9 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                     }
                 } else {
                     if (tokens[i + 1].dif == TOK_INT) {
-                        char* expr = tokens[i + 1].name;
+                        expr = tokens[i + 1].name;
                         replace_all_vars(expr, variables, var_count);
-                        double value = te_interp(expr, 0);
+                        value = te_interp(expr, 0);
                         snprintf(tokens[i + 1].name, sizeof(tokens[i + 1].name), "%d", (int)value);
                     }
                     if (tokens[i + 1].type == TOKEN_VAR) {
@@ -971,34 +976,37 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
             case TOKEN_CLAMP: break;
             case TOKEN_UNKNOWN:
                 if ((tokens[i + 2].type == TOKEN_DEF)) {
-                    switch (t.name) {
-                        case "dbl": 
-                            variables = addVar(variables, &var_count, tokens[i+1].name, 0, tokens[i + 2].name, TOK_DOUBLE);
-                            snprintf(formatted, sizeof(formatted), "%s dq %s, 0\n    ", tokens[i + 1].name, tokens[i + 2].name);
-                            data = append(data, formatted);
-                            break;
-                        case "int":
-                            variables = addVar(variables, &var_count, tokens[i+1].name, 0, tokens[i + 2].name, TOK_INT);
-                            snprintf(formatted, sizeof(formatted), "%s dd %s, 0\n    ", tokens[i + 1].name, tokens[i + 2].name); 
-                            data = append(data, formatted);
-                            break;
-                        case "str": 
-                            variables = addVar(variables, &var_count, tokens[i+1].name, 0, tokens[i + 2].name, TOK_STR);
-                            snprintf(formatted, sizeof(formatted), "%s db \"%s\", 0\n    ", tokens[i + 1].name, tokens[i + 2].name); 
-                            data = append(data, formatted);
-                            break;
-                        case "lng":
-                            variables = addVar(variables, &var_count, tokens[i+1].name, 0, tokens[i + 2].name, TOK_DOUBLE);
-                            snprintf(formatted, sizeof(formatted), "%s dt %s, 0\n    ", tokens[i + 1].name, tokens[i + 2].name); 
-                            data = append(data, formatted);
-                            break;
-                        case "dwr":
-                            variables = addVar(variables, &var_count, tokens[i+1].name, 0, tokens[i + 2].name, TOK_DOUBLE);
-                            snprintf(formatted, sizeof(formatted), "%s dw %s, 0\n    ", tokens[i + 1].name, tokens[i + 2].name); 
-                            data = append(data, formatted);
-                            break;
-                        default: break;
+                   if (strcmp(t.name, "dbl") == 0) {
+                        variables = addVar(variables, &var_count, tokens[i+1].name, 0, tokens[i + 2].name, TOK_DOUBLE);
+                        snprintf(formatted, sizeof(formatted), "%s dq %s, 0\n    ",
+                                tokens[i + 1].name, tokens[i + 2].name);
+                        data = append(data, formatted);
+
+                    } else if (strcmp(t.name, "int") == 0) {
+                        variables = addVar(variables, &var_count, tokens[i+1].name, 0, tokens[i + 2].name, TOK_INT);
+                        snprintf(formatted, sizeof(formatted), "%s dd %s, 0\n    ",
+                                tokens[i + 1].name, tokens[i + 2].name);
+                        data = append(data, formatted);
+
+                    } else if (strcmp(t.name, "str") == 0) {
+                        variables = addVar(variables, &var_count, tokens[i+1].name, 0, tokens[i + 2].name, TOK_STR);
+                        snprintf(formatted, sizeof(formatted), "%s db \"%s\", 0\n    ",
+                                tokens[i + 1].name, tokens[i + 2].name);
+                        data = append(data, formatted);
+
+                    } else if (strcmp(t.name, "lng") == 0) {
+                        variables = addVar(variables, &var_count, tokens[i+1].name, 0, tokens[i + 2].name, TOK_DOUBLE);
+                        snprintf(formatted, sizeof(formatted), "%s dt %s, 0\n    ",
+                                tokens[i + 1].name, tokens[i + 2].name);
+                        data = append(data, formatted);
+
+                    } else if (strcmp(t.name, "dwr") == 0) {
+                        variables = addVar(variables, &var_count, tokens[i+1].name, 0, tokens[i + 2].name, TOK_DOUBLE);
+                        snprintf(formatted, sizeof(formatted), "%s dw %s, 0\n    ",
+                                tokens[i + 1].name, tokens[i + 2].name);
+                        data = append(data, formatted);
                     }
+
                     
                 }
                 
@@ -1048,7 +1056,7 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                         }
                         i += 2;
 
-                    } else if (tokens[i + 2].dif == STR) {
+                    } else if (tokens[i + 2].dif == TOK_STR) {
                         char* string = tokens[i + 2].name;
                         int len = strlen(string);
                         char formatted[512];
@@ -1723,9 +1731,15 @@ int main(int argc, char *argv[]) {
 #ifdef _WIN32
         snprintf(nasmCmd, sizeof(nasmCmd), "nasm -f win32 \"%s\" -o \"%s\"", asm_out, obj_out);
         if (noconsole) {
-            snprintf(linkCmd, sizeof(linkCmd), "GoLink /entry _start /mix \"%s\" %s kernel32.dll user32.dll msvcrt.dll %s", obj_out, incl, output_redirect);
+            snprintf(linkCmd, sizeof(linkCmd),
+                "gcc -m32 -nostartfiles -Wl,-e,_start -Wl,-subsystem,console "
+                "\"%s\" -o \"%s\" %s -lkernel32 -luser32 -lmsvcrt %s",
+                obj_out, exe_out, incl, output_redirect);
         } else {
-            snprintf(linkCmd, sizeof(linkCmd), "GoLink /console /entry _start /mix \"%s\" %s kernel32.dll user32.dll msvcrt.dll %s", obj_out, incl, output_redirect);
+            snprintf(linkCmd, sizeof(linkCmd),
+                "gcc -m32 -nostartfiles -Wl,-e,_start -Wl,-subsystem,windows "
+                "\"%s\" -o \"%s\" %s -lkernel32 -luser32 -lmsvcrt %s",
+                obj_out, exe_out, incl, output_redirect);
         }
 #else
         snprintf(nasmCmd, sizeof(nasmCmd), "nasm -f elf32 \"%s\" -o \"%s\"", asm_out, obj_out);
@@ -1743,7 +1757,7 @@ int main(int argc, char *argv[]) {
         }
 
         if (system(linkCmd) != 0) {
-            fprintf(stderr, "Error: Linking failed\n");
+            printf("[LINK CMD]\n%s\n", linkCmd);
             goto cleanup;
         }
 
@@ -1787,9 +1801,15 @@ int main(int argc, char *argv[]) {
 #ifdef _WIN32
         snprintf(nasmCmd, sizeof(nasmCmd), "nasm -f win32 \"%s\" -o \"%s\"", asmFile, objFile);
         if (noconsole) {
-            snprintf(linkCmd, sizeof(linkCmd), "GoLink /entry _start /mix \"%s\" %s kernel32.dll user32.dll msvcrt.dll %s", objFile, incl, output_redirect);
+            snprintf(linkCmd, sizeof(linkCmd),
+                "gcc -m32 -nostartfiles -Wl,-e,_start -Wl,-subsystem,windows "
+                "\"%s\" -o \"%s\" %s -lkernel32 -luser32 -lmsvcrt %s",
+                objFile, exeFile, incl, output_redirect);
         } else {
-            snprintf(linkCmd, sizeof(linkCmd), "GoLink /console /entry _start /mix \"%s\" %s kernel32.dll user32.dll msvcrt.dll %s", objFile, incl, output_redirect);
+            snprintf(linkCmd, sizeof(linkCmd),
+                "gcc -m32 -nostartfiles -Wl,-e,_start -Wl,-subsystem,windows "
+                "\"%s\" -o \"%s\" %s -lkernel32 -luser32 -lmsvcrt %s",
+                objFile, exeFile, incl, output_redirect);
         }
 #else
         snprintf(nasmCmd, sizeof(nasmCmd), "nasm -f elf32 \"%s\" -o \"%s\"", asmFile, objFile);
