@@ -264,18 +264,6 @@ Token get_next_token(const char **input) {
         return t;
     }
 
-    if (**input == '-') {
-        (*input)++;
-        int value = 0;
-        if (isdigit(**input)) {
-            value = (value * 10 + (**input - '0')) * 4;
-            (*input)++;
-        }
-        Token t = { TOKEN_ARG, value };
-        snprintf(t.name, sizeof(t.name), "[]", value);
-        return t;
-    }
-
     if (**input == '$') {
         (*input)++;
         int value = 0;
@@ -521,7 +509,7 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
 #ifdef _WIN32
         text = append(text, "section .text\n    global _start\n    extern _printf, strcmp, srand, GetTickCount, gets, _atoi");
 #else
-        text = append(text, "section .text\n    global _start\n    extern printf, atoi, fgets, time");
+        text = append(text, "section .text\n    global main\n    extern printf, atoi, fgets, time");
 #endif
 
     data = append(data, "section .data\n    ");
@@ -529,10 +517,16 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
 #ifdef _WIN32
             code = append(code, "_start:\n    push 0\n    call GetTickCount\n    add esp, 4\n    push eax\n    call srand\n    add esp, 4\n    ");
 #else
-            code = append(code, "_start:\n    push 0\n    call time\n    add esp, 4\n    push eax\n    call srand\n    add esp, 4\n    ");
+            code = append(code, "main:\n    push 0\n    call time\n    add esp, 4\n    push eax\n    call srand\n    add esp, 4\n    ");
 #endif
         
-    } else {code = append(code, "_start:\n    ");}
+    } else {
+#ifdef _WIN32
+        code = append(code, "_start:\n    ");
+#else
+        code = append(code, "main:\n    ");
+#endif
+    }
 
     for (int i = 0; i < *token_count; i++) {
         Token t = tokens[i];
@@ -1125,7 +1119,7 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                         } else {
                             if (!strcmp(tokens[i + current].name, "dq")) {
                                 current++;
-                                snprintf(formatted, sizeof(formatted), "push dword [%s+4]\n    push dword [%s]\n    ", tokens[i + current].name);
+                                snprintf(formatted, sizeof(formatted), "push dword [%s+4]\n    push dword [%s]\n    ", tokens[i + current].name, tokens[i + current].name);
                             } else {
                                 snprintf(formatted, sizeof(formatted), "push %s\n    ", tokens[i + current].name);
                             }
@@ -1742,12 +1736,12 @@ int main(int argc, char *argv[]) {
                 obj_out, exe_out, incl, output_redirect);
         }
 #else
-        snprintf(nasmCmd, sizeof(nasmCmd), "nasm -f elf32 \"%s\" -o \"%s\"", asm_out, obj_out);
+        snprintf(nasmCmd, sizeof(nasmCmd), "nasm -f elf32 %s -o %s", asm_out, obj_out);
         /* Use gcc to link so libc is linked automatically; -m32 assumes 32-bit object */
         if (noconsole) {
-            snprintf(linkCmd, sizeof(linkCmd), "gcc -m32 \"%s\" -o \"%s\" %s", obj_out, exe_out, output_redirect);
+            snprintf(linkCmd, sizeof(linkCmd), "gcc -m32 %s -o %s %s", obj_out, exe_out, output_redirect);
         } else {
-            snprintf(linkCmd, sizeof(linkCmd), "gcc -m32 \"%s\" -o \"%s\" %s", obj_out, exe_out, output_redirect);
+            snprintf(linkCmd, sizeof(linkCmd), "gcc -m32 \"%s\" -o %s %s", obj_out, exe_out, output_redirect);
         }
 #endif
         
@@ -1799,21 +1793,21 @@ int main(int argc, char *argv[]) {
         char linkCmd[2048];
 
 #ifdef _WIN32
-        snprintf(nasmCmd, sizeof(nasmCmd), "nasm -f win32 \"%s\" -o \"%s\"", asmFile, objFile);
+        snprintf(nasmCmd, sizeof(nasmCmd), "nasm -f win32 %s -o %s", asmFile, objFile);
         if (noconsole) {
             snprintf(linkCmd, sizeof(linkCmd),
                 "gcc -m32 -nostartfiles -Wl,-e,_start -Wl,-subsystem,windows "
-                "\"%s\" -o \"%s\" %s -lkernel32 -luser32 -lmsvcrt %s",
+                "%s -o %s %s -lkernel32 -luser32 -lmsvcrt %s",
                 objFile, exeFile, incl, output_redirect);
         } else {
             snprintf(linkCmd, sizeof(linkCmd),
                 "gcc -m32 -nostartfiles -Wl,-e,_start -Wl,-subsystem,windows "
-                "\"%s\" -o \"%s\" %s -lkernel32 -luser32 -lmsvcrt %s",
+                "%s -o %s %s -lkernel32 -luser32 -lmsvcrt %s",
                 objFile, exeFile, incl, output_redirect);
         }
 #else
-        snprintf(nasmCmd, sizeof(nasmCmd), "nasm -f elf32 \"%s\" -o \"%s\"", asmFile, objFile);
-        snprintf(linkCmd, sizeof(linkCmd), "gcc -m32 \"%s\" -o \"%s\" %s", objFile, exeFile, output_redirect);
+        snprintf(nasmCmd, sizeof(nasmCmd), "nasm -f elf32 %s -o %s", asmFile, objFile);
+        snprintf(linkCmd, sizeof(linkCmd), "gcc -m32 %s -o %s %s", objFile, exeFile, output_redirect);
 #endif
 
         if (system(nasmCmd) != 0) {
@@ -1822,7 +1816,7 @@ int main(int argc, char *argv[]) {
         }
 
         if (system(linkCmd) != 0) {
-            fprintf(stderr, "Error: Linking failed\n");
+            printf("[LINK CMD]\n%s\n", linkCmd);
             goto cleanup;
         }
 
