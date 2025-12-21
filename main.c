@@ -789,7 +789,12 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                 }
                 break;
             case TOKEN_INC:  
-                snprintf(formatted, sizeof(formatted), "inc %s\n    ", tokens[i - 1].name);
+                if (tokens[i - 2].type == TOKEN_VAR) {
+                    snprintf(formatted, sizeof(formatted), "inc dword %s\n    ", tokens[i - 1].name);
+                } else {
+                    snprintf(formatted, sizeof(formatted), "inc %s\n    ", tokens[i - 1].name);
+                }
+                
 
                 if (is_in_array(variables, var_count, tokens[i - 1].name)) {
                     updateVar(variables, var_count, tokens[i - 1].name, getValue(tokens[i - 1].name, variables, var_count) + 1, getChar(tokens[i - 1].name, variables, var_count));

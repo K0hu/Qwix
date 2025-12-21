@@ -1,5 +1,11 @@
-include '_MessageBoxA@16'
+z. 0
+l. [2, 3, 1, 4, 6]
 
-title. "Title"
-msg. "Hello World!"
-+0 +title +msg +0 @'_MessageBoxA@16'
+fmt. "Num: %d\n"
+loop.:
+    ecx = (z)
+    print #(l+ecx*4) fmt
+    #(z)++
+    z%5 ?exit8 !loop
+    
+:loop
