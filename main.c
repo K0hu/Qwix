@@ -509,7 +509,7 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
 #ifdef _WIN32
         text = append(text, "section .text\n    global _start\n    extern _printf, strcmp, srand, GetTickCount, gets, _atoi");
 #else
-        text = append(text, "section .text\n    global main\n    extern printf, atoi, fgets, time");
+        text = append(text, "section .text\n    global main\n    extern printf, atoi, fgets, time, stdin");
 #endif
 
     data = append(data, "section .data\n    ");
@@ -890,20 +890,25 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                         break;
                     }
 
-                    if ((left.type == TOKEN_UNKNOWN && is_in_array(variables, var_count, left.name)) &&
-                        (right.type == TOKEN_NUMBER || right.type == TOKEN_MCLAM || right.type == TOKEN_STR || (right.type == TOKEN_UNKNOWN && is_in_array(variables, var_count, right.name)))) {
+                    else if (1) {
 
                         if (right.type == TOKEN_NUMBER) {
-                            snprintf(cmp_code, sizeof(cmp_code),
-                                    "mov eax, [%s]\n    cmp eax, %d\n    ",
+                            if (left.type == TOKEN_ARG) {
+                                snprintf(cmp_code, sizeof(cmp_code),
+                                    "mov eax, %s\n    cmp eax, %d\n    ",
                                     left.name, right.value);
+                            } else {
+                                snprintf(cmp_code, sizeof(cmp_code),
+                                    "mov eax, [%s]\n    cmp eax, %d\n    ",
+                                    left.name, right.value);   
+                            }
                         } else if (right.type == TOKEN_STR) {
                             snprintf(cmp_code, sizeof(cmp_code),
                                     "cmp %s, '%s'\n    ",
                                     left.name, right.name);
                         } else {
                             snprintf(cmp_code, sizeof(cmp_code),
-                                    "mov eax, [%s]\n    cmp eax, [%s]\n    ",
+                                    "mov eax, %s\n    cmp eax, [%s]\n    ",
                                     left.name, right.name);
                         } 
 
@@ -1084,15 +1089,15 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                 else if (strcmp(t.name, "prompt") == 0) {
                     if (tokens[i + 1].type == TOKEN_UNKNOWN && is_in_array(variables, var_count, tokens[i + 2].name)) {
                         char formatted[512];
-                        if (!is_in_array(variables, var_count, tokens[i + 1].name)) {
-                            snprintf(formatted, sizeof(formatted), "%s db 128 dup(0)\n    ", tokens[i + 1].name);
+                        if (!is_in_array(variables, var_count, tokens[i + 2].name)) {
+                            snprintf(formatted, sizeof(formatted), "%s db 128 dup(0)\n    ", tokens[i + 2].name);
                             data = append(data, formatted);
-                            variables = addVar(variables, &var_count, tokens[i + 1].name, 0, "", TOK_STR);
+                            variables = addVar(variables, &var_count, tokens[i + 2].name, 0, "", TOK_STR);
                         }
 #ifdef _WIN32
-                            snprintf(formatted, sizeof(formatted), "push %s\n    call _printf\n    add esp, 4\n    push %s\n    call gets\n    add esp, 4\n    ", tokens[i + 2].name, tokens[i + 1].name);
+                        snprintf(formatted, sizeof(formatted), "push %s\n    call _printf\n    add esp, 4\n    push %s\n    call gets\n    add esp, 4\n    ", tokens[i + 1].name, tokens[i + 2].name);
 #else
-                            snprintf(formatted, sizeof(formatted), "push %s\n    call printf\n    add esp, 4\n    push %s\n    call fgets\n    add esp, 4\n    ", tokens[i + 2].name, tokens[i + 1].name);
+                        snprintf(formatted, sizeof(formatted), "push %s\n    call printf\n    add esp, 4\n    push dword [stdin]\n    push 128\n    push %s\n    call fgets\n    add esp, 12\n    ", tokens[i + 1].name, tokens[i + 2].name);
 #endif
                         
                         switch (current_section)
@@ -1107,7 +1112,7 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                         }
                     } else {
                         errno = EINVAL;
-                        snprintf(error, sizeof(error), MAGENTA "[%d]: " RESET "\033[1;31merror:" RESET FETT " Syntax error near promt" RESET, EOF_counter);
+                        snprintf(error, sizeof(error), MAGENTA "[%d]: " RESET "\033[1;31merror:" RESET FETT " Syntax error near prompt" RESET, EOF_counter);
                         perror(error);
                         return NULL;
                     }
