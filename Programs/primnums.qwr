@@ -3,25 +3,25 @@ fl. "False\n"
 z. 2
 
 is_primnum.:
-    $1%1 <false ?false
-    $1%2 ?true
-    $1%3 ?true
+    $1%1 <is_false ?is_false
+    $1%2 ?is_true
+    $1%3 ?is_true
     ecx = 2
 
-loop.:
+prim_loop.:
     div $1 ecx
-    .edx%0 ?false
+    .edx%0 ?is_false
 
     ecx++
     mul ecx ecx
-    .$1%eax ?loop <loop
+    .$1%eax ?prim_loop <prim_loop
 
 
-true.:
+is_true.:
     print tr
     /
 
-false.:
+is_false.:
     print fl
     /
 

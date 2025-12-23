@@ -507,7 +507,7 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
     }
     df = append(df, "\n");
 #ifdef _WIN32
-        text = append(text, "section .text\n    global _start\n    extern _printf, strcmp, srand, GetTickCount, gets, _atoi");
+        text = append(text, "section .text\n    global _start\n    extern _printf, _ReadConsoleA@20, _GetStdHandle@4, strcmp, srand, GetTickCount, _atoi");
 #else
         text = append(text, "section .text\n    global main\n    extern printf, atoi, fgets, time, stdin");
 #endif
@@ -1095,7 +1095,7 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                             variables = addVar(variables, &var_count, tokens[i + 2].name, 0, "", TOK_STR);
                         }
 #ifdef _WIN32
-                        snprintf(formatted, sizeof(formatted), "push %s\n    call _printf\n    add esp, 4\n    push %s\n    call gets\n    add esp, 4\n    ", tokens[i + 1].name, tokens[i + 2].name);
+                        snprintf(formatted, sizeof(formatted), "push %s\n    call _printf\n    add esp, 4\n    push -10\n    call _GetStdHandle@4\n    mov ebx, eax\n    push 0\n    push 0\n    push 128\n    push %s\n    push ebx\n    call _ReadConsoleA@20\n    add esp, 16\n    ", tokens[i + 1].name, tokens[i + 2].name);
 #else
                         snprintf(formatted, sizeof(formatted), "push %s\n    call printf\n    add esp, 4\n    push dword [stdin]\n    push 128\n    push %s\n    call fgets\n    add esp, 12\n    ", tokens[i + 1].name, tokens[i + 2].name);
 #endif
