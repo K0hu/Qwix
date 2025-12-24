@@ -1,0 +1,52 @@
+include "XOpenDisplay"
+include "XCreateSimpleWindow"
+include "XMapWindow"
+include "XNextEvent"
+include "XCloseDisplay"
+include "XDefaultScreen"
+include "XRootWindow"
+include "XWhitePixel"
+
+.~event times 24 dq 0
+
+reg sub rsp 8
+xor rdi rdi @XOpenDisplay
+try rax rax ?exit8
+r12 = rax
+
+rdi = r12 @XDefaultScreen
+r13d = eax
+
+rdi = r12
+esi = r13d
+@XRootWindow
+r14 = rax
+
+reg sub rsp 24
+"qword [rsp]" = 1
+"qword [rsp+8]" = 0
+"qword [rsp+16]" = 0
+
+
+
+rdi = r12
+rsi = r14
+rdx = 100
+rcx = 100
+r8 = 400
+r9 = 300
+@XCreateSimpleWindow
+reg add rsp 24
+r15 = rax
+
+rdi = r12
+rsi = r15
+@XMapWindow
+
+loop.:
+    rdi = r12
+    ~lea rsi, [event]
+    @XNextEvent :loop
+
+:loop    
+NOTE "note.GNU-stack noalloc noexec nowrite progbits"

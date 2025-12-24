@@ -482,6 +482,8 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
     bss[0] = '\0';
     char* df = malloc(1); 
     df[0] = '\0';
+    char* notes = malloc(1); 
+    notes[0] = '\0';
 
     char formatted[512];
     char error[512];
@@ -1297,13 +1299,19 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                         code = append(code, formatted);
                         break;
                     } 
+                } else if (!strcmp(t.name, "NOTE")) {
+                    snprintf(formatted, sizeof(formatted), "section .%s\n", tokens[i + 1].name);
+                    notes = append(notes, formatted);
                 } else if (!strcmp(t.name, "add")) {
+                    
                     if (!strcmp(tokens[i - 1].name, "dq")) {
                         if (tokens[i + 3].type == TOKEN_DEF) {
                             snprintf(formatted, sizeof(formatted), "movsd xmm0, %s\n    movsd xmm1, %s\n    addsd xmm0, xmm1\n    movsd %s, xmm0\n    ", tokens[i + 1].name, tokens[i + 2].name, tokens[i + 4].name);
                         } else {
                             snprintf(formatted, sizeof(formatted), "movsd xmm0, %s\n    movsd xmm1, %s\n    addsd xmm0, xmm1\n    ", tokens[i + 1].name, tokens[i + 2].name);
                         }
+                    } else if (!strcmp(tokens[i - 1].name, "reg")) {
+                        snprintf(formatted, sizeof(formatted), "add %s, %s\n    ", tokens[i + 1].name, tokens[i + 2].name);
                     } else {
                         if (tokens[i + 3].type == TOKEN_DEF) {
                             snprintf(formatted, sizeof(formatted), "mov eax, %s\n    add eax, %s\n    mov %s, eax\n    ", tokens[i + 1].name, tokens[i + 2].name, tokens[i + 4].name);
@@ -1396,6 +1404,8 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                         } else {
                             snprintf(formatted, sizeof(formatted), "movsd xmm0, %s\n    movsd xmm1, %s\n    subsd xmm0, xmm1\n    ", tokens[i + 1].name, tokens[i + 2].name);
                         }
+                    } else if (!strcmp(tokens[i - 1].name, "reg")) {
+                        snprintf(formatted, sizeof(formatted), "sub %s, %s\n    ", tokens[i + 1].name, tokens[i + 2].name);
                     } else {
                         if (tokens[i + 3].type == TOKEN_DEF) {
                             snprintf(formatted, sizeof(formatted), "mov eax, %s\n    sub eax, %s\n    mov %s, eax\n    ", tokens[i + 1].name, tokens[i + 2].name, tokens[i + 4].name);
@@ -1508,7 +1518,7 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
 #ifdef _WIN32
         jmp = append(jmp, "\nexit8:\n    push 0\n    call _ExitProcess@4\n");
 #else
-        jmp = append(jmp, "\nexit8:\n    push 0\n    call exit\n");
+        jmp = append(jmp, "\nexit8:\n    xor edi, edi\n    call exit\n");
 #endif
 
     data = append(data, "\n");
@@ -1529,6 +1539,8 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
     output = append(output, df);
     output = append(output, code);
     output = append(output, jmp);
+    output = append(output, notes);
+
 
     data = append(data, output);
     free(output);
@@ -1592,6 +1604,8 @@ int main(int argc, char *argv[]) {
     bool opt = false;
     bool info = false;
     bool include = false;
+    bool bit64 = false;
+    bool nopie = false;
     bool noconsole = false;
     int total_token_count = 0; // Total token count
     Token *all_tokens = malloc(sizeof(Token) * 10); // All the tokens
@@ -1620,6 +1634,10 @@ int main(int argc, char *argv[]) {
             opt = true;
         } else if (strcmp(argv[i], "-time") == 0) {
             info = true;
+        } else if (strcmp(argv[i], "-64") == 0) {
+            bit64 = true;
+        } else if (strcmp(argv[i], "-np") == 0) {
+            nopie = true;
         } else if (strcmp(argv[i], "-in") == 0) {
             if (i + 1 < argc) {
                 strncpy(include_libs, argv[i + 1], sizeof(include_libs) - 1);
@@ -1705,9 +1723,9 @@ int main(int argc, char *argv[]) {
     }
 #else
     if (opt) {
-        snprintf(output_redirect, sizeof(output_redirect), "%s", "");
+        snprintf(output_redirect, sizeof(output_redirect), "%s %s", nopie ? "-no-pie" : "", "");
     } else {
-        snprintf(output_redirect, sizeof(output_redirect), "%s", "> /dev/null 2>&1");
+        snprintf(output_redirect, sizeof(output_redirect), "%s %s", nopie ? "-no-pie" : "", "> /dev/null 2>&1");
     }
 #endif
 
@@ -1786,12 +1804,12 @@ int main(int argc, char *argv[]) {
                 obj_out, exe_out, incl, output_redirect);
         }
 #else
-        snprintf(nasmCmd, sizeof(nasmCmd), "nasm -f elf32 %s -o %s", asm_out, obj_out);
+        bit64 ? snprintf(nasmCmd, sizeof(nasmCmd), "nasm -f elf64 %s -o %s", asm_out, obj_out) : snprintf(nasmCmd, sizeof(nasmCmd), "nasm -f elf32 %s -o %s", asm_out, obj_out);
         /* Use gcc to link so libc is linked automatically; -m32 assumes 32-bit object */
         if (noconsole) {
-            snprintf(linkCmd, sizeof(linkCmd), "gcc -m32 %s -o %s %s %s", obj_out, exe_out, link_libs, output_redirect);
+            bit64 ? snprintf(linkCmd, sizeof(linkCmd), "gcc %s -o %s %s %s", obj_out, exe_out, link_libs, output_redirect) : snprintf(linkCmd, sizeof(linkCmd), "gcc -m32 %s -o %s %s %s", obj_out, exe_out, link_libs, output_redirect);
         } else {
-            snprintf(linkCmd, sizeof(linkCmd), "gcc -m32 \"%s\" -o %s %s %s", obj_out, exe_out, link_libs, output_redirect);
+            bit64 ? snprintf(linkCmd, sizeof(linkCmd), "gcc \"%s\" -o %s %s %s", obj_out, exe_out, link_libs, output_redirect) : snprintf(linkCmd, sizeof(linkCmd), "gcc -m32 \"%s\" -o %s %s %s", obj_out, exe_out, link_libs, output_redirect);
         }
 #endif
         
@@ -1801,7 +1819,7 @@ int main(int argc, char *argv[]) {
         }
 
         if (system(linkCmd) != 0) {
-            printf("[LINK CMD]\n%s\n", linkCmd);
+            printf("Error: GCC failed\n");
             goto cleanup;
         }
 
@@ -1856,8 +1874,8 @@ int main(int argc, char *argv[]) {
                 objFile, exeFile, incl, output_redirect);
         }
 #else
-        snprintf(nasmCmd, sizeof(nasmCmd), "nasm -f elf32 %s -o %s", asmFile, objFile);
-        snprintf(linkCmd, sizeof(linkCmd), "gcc -m32 %s -o %s %s %s", objFile, exeFile, link_libs, output_redirect);
+        bit64 ? snprintf(nasmCmd, sizeof(nasmCmd), "nasm -f elf64 %s -o %s", asmFile, objFile) : snprintf(nasmCmd, sizeof(nasmCmd), "nasm -f elf32 %s -o %s", asmFile, objFile);
+        bit64 ? snprintf(linkCmd, sizeof(linkCmd), "gcc %s -o %s %s %s", objFile, exeFile, link_libs, output_redirect) : snprintf(linkCmd, sizeof(linkCmd), "gcc -m32 %s -o %s %s %s", objFile, exeFile, link_libs, output_redirect);
 #endif
 
         if (system(nasmCmd) != 0) {
@@ -1866,7 +1884,8 @@ int main(int argc, char *argv[]) {
         }
 
         if (system(linkCmd) != 0) {
-            printf("[LINK CMD]\n%s\n", linkCmd);
+            printf("Error: GCC failed\n");
+            printf("%s\n", linkCmd);
             goto cleanup;
         }
 
