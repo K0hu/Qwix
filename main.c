@@ -853,7 +853,7 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                         }
                         i += 1;
                     } else {
-                        if (left.type == TOKEN_UNKNOWN && is_in_array(variables, var_count, left.name)) {
+                        if (left.type == TOKEN_UNKNOWN && !is_in_array(variables, var_count, left.name)) {
                             errno = EINVAL;
                             snprintf(error, sizeof(error), MAGENTA "[%d]: " RESET "\033[1;31merror:" RESET FETT " Syntax error near string compare | " RESET RED "'" RESET BLUE "%s" RESET RED "' not found" RESET, EOF_counter, right.name);
                             perror(error);
@@ -1099,7 +1099,7 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
 #else
                         snprintf(formatted, sizeof(formatted), "push %s\n    call printf\n    add esp, 4\n    push dword [stdin]\n    push 128\n    push %s\n    call fgets\n    add esp, 12\n    ", tokens[i + 1].name, tokens[i + 2].name);
 #endif
-                        
+                        variables = addVar(variables, &var_count, tokens[i + 2].name, 0, tokens[i + 2].name, TOK_STR);
                         switch (current_section)
                         {
                         case 1:
@@ -1129,6 +1129,7 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                         } else {
                             if (!strcmp(tokens[i + current].name, "dq")) {
                                 current++;
+                                n++;
                                 snprintf(formatted, sizeof(formatted), "push dword [%s+4]\n    push dword [%s]\n    ", tokens[i + current].name, tokens[i + current].name);
                             } else {
                                 snprintf(formatted, sizeof(formatted), "push %s\n    ", tokens[i + current].name);
@@ -1241,7 +1242,7 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                                 snprintf(formatted, sizeof(formatted), "push %d\n    push %d\n    call randint\n    add esp, 8\n    mov [%s], eax\n    ", getValue(tokens[i + 2].name, variables, var_count), getValue(tokens[i + 1].name, variables, var_count), tokens[i - 1].name);
                             } else {
                                 int rd_num = rand() % (getValue(tokens[i + 2].name, variables, var_count) - getValue(tokens[i + 1].name, variables, var_count) + 1) + getValue(tokens[i + 1].name, variables, var_count);
-                                snprintf(formatted, sizeof(formatted), "mov dword %s, %d\n    ", tokens[i - 1].name, rd_num);
+                                snprintf(formatted, sizeof(formatted), "mov dword [%s], %d\n    ", tokens[i - 1].name, rd_num);
                             }
                         } else {
                             errno = EINVAL;
@@ -1260,10 +1261,20 @@ char* parser(Token* tokens, int *token_count, char **incl, bool nw, bool ri, boo
                             break;
                         }   
                     } else {
-                        errno = EINVAL;
-                        snprintf(error, sizeof(error), MAGENTA "%d:" RESET  RED"Error: Syntax error near random int. | Missing var to load" RESET, EOF_counter);
-                        perror(error);
-                        return NULL;
+                        snprintf(error, sizeof(error), MAGENTA "%d:" RESET  RED"Error: Syntax error near random int. | Missing var to load" RESET "\n", EOF_counter);
+                        printf(error);
+                        int rd_num = rand() % (getValue(tokens[i + 2].name, variables, var_count) - getValue(tokens[i + 1].name, variables, var_count) + 1) + getValue(tokens[i + 1].name, variables, var_count);
+                        snprintf(formatted, sizeof(formatted), "mov eax, %d\n    ", tokens[i - 1].name, rd_num);
+                        switch (current_section)
+                        {
+                        case 1:
+                            jmp = append(jmp, formatted);
+                            break;
+                        
+                        default:
+                            code = append(code, formatted);
+                            break;
+                        }   
                     }
                 } else if (!strcmp(t.name, "define")) {
                     snprintf(formatted, sizeof(formatted), "%%define %s %s\n", tokens[i + 1].name, tokens[i + 2].name);
@@ -1557,6 +1568,19 @@ double get_time_sec() {
 #endif
 }
 
+void build_link_libs(const char *input, char *output, size_t out_size) {
+    char temp[512];
+    strncpy(temp, input, sizeof(temp) - 1);
+    temp[sizeof(temp) - 1] = '\0';
+
+    char *tok = strtok(temp, " ");
+    while (tok) {
+        strncat(output, " -l", out_size - strlen(output) - 1);
+        strncat(output, tok, out_size - strlen(output) - 1);
+        tok = strtok(NULL, " ");
+    }
+}
+
 // Main code
 int main(int argc, char *argv[]) {
     bool tok = false; // Prints tokens
@@ -1567,6 +1591,7 @@ int main(int argc, char *argv[]) {
     bool bss = false;
     bool opt = false;
     bool info = false;
+    bool include = false;
     bool noconsole = false;
     int total_token_count = 0; // Total token count
     Token *all_tokens = malloc(sizeof(Token) * 10); // All the tokens
@@ -1577,7 +1602,7 @@ int main(int argc, char *argv[]) {
     char objFile[512] = {0};
     char output_redirect[128] = {0};
     double start_time = 0;
-
+    char include_libs[512] = {0};
     /* FILENAME */
     const char *filename = NULL; 
     for (int i = 1; i < argc; i++) {
@@ -1593,8 +1618,17 @@ int main(int argc, char *argv[]) {
             noconsole = true;
         } else if (strcmp(argv[i], "-gop") == 0) {
             opt = true;
-        } else if (strcmp(argv[i], "-in") == 0) {
+        } else if (strcmp(argv[i], "-time") == 0) {
             info = true;
+        } else if (strcmp(argv[i], "-in") == 0) {
+            if (i + 1 < argc) {
+                strncpy(include_libs, argv[i + 1], sizeof(include_libs) - 1);
+                include = true;
+                i++; // ⬅ wichtig: Argument überspringen
+            } else {
+                fprintf(stderr, "Error: -in requires an argument\n");
+                goto cleanup;
+            }
         } else if (argv[i][0] != '-') {
             filename = argv[i];
         }
@@ -1602,7 +1636,7 @@ int main(int argc, char *argv[]) {
 
     /* Help if filename was not found */
     if (!filename) {
-        fprintf(stderr, "Usage: %s <inputfile> [-tok] [-asm] [-nw] [-o] [-nc] [-gop] [-in]\n", argv[0]);
+        fprintf(stderr, "Usage: %s <inputfile> [-tok] [-asm] [-nw] [-o] [-nc] [-gop] [-time] [-in \"lib1 lib2\"]\n", argv[0]);
         goto cleanup;
     }
 
@@ -1677,6 +1711,12 @@ int main(int argc, char *argv[]) {
     }
 #endif
 
+    char link_libs[512] = {0};
+
+    if (include) {
+        build_link_libs(include_libs, link_libs, sizeof(link_libs));
+    }
+
     /* --- Option: write .asm file and exit --- */
     if (a) {
         char formatted[512];
@@ -1749,9 +1789,9 @@ int main(int argc, char *argv[]) {
         snprintf(nasmCmd, sizeof(nasmCmd), "nasm -f elf32 %s -o %s", asm_out, obj_out);
         /* Use gcc to link so libc is linked automatically; -m32 assumes 32-bit object */
         if (noconsole) {
-            snprintf(linkCmd, sizeof(linkCmd), "gcc -m32 %s -o %s %s", obj_out, exe_out, output_redirect);
+            snprintf(linkCmd, sizeof(linkCmd), "gcc -m32 %s -o %s %s %s", obj_out, exe_out, link_libs, output_redirect);
         } else {
-            snprintf(linkCmd, sizeof(linkCmd), "gcc -m32 \"%s\" -o %s %s", obj_out, exe_out, output_redirect);
+            snprintf(linkCmd, sizeof(linkCmd), "gcc -m32 \"%s\" -o %s %s %s", obj_out, exe_out, link_libs, output_redirect);
         }
 #endif
         
@@ -1817,7 +1857,7 @@ int main(int argc, char *argv[]) {
         }
 #else
         snprintf(nasmCmd, sizeof(nasmCmd), "nasm -f elf32 %s -o %s", asmFile, objFile);
-        snprintf(linkCmd, sizeof(linkCmd), "gcc -m32 %s -o %s %s", objFile, exeFile, output_redirect);
+        snprintf(linkCmd, sizeof(linkCmd), "gcc -m32 %s -o %s %s %s", objFile, exeFile, link_libs, output_redirect);
 #endif
 
         if (system(nasmCmd) != 0) {
