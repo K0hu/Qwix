@@ -18,7 +18,7 @@
    3. [Include](#include)
    4. [Prompt](#prompt)
    5. [(Random)](#randint)
-7. [Assembly](#asmembly)
+7. [Assembly](#assembly)
 8. [Compiler](#compiler)
 
 ## What is Qwix?
