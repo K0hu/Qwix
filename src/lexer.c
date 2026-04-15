@@ -58,9 +58,19 @@ Token get_next_token(const char **input) {
             value = value * 10 + (**input - '0');
             (*input)++;
         }
-        Token t = { TOKEN_NUMBER, value };
+        
+        QTokenType tok = TOKEN_NUMBER;
+        if (strncmp(**input + 1, '.', 1) {
+            tok = TOKEN_FLOAT
+            *input += 2;
+            while (isdigit(**input)) {
+                value = value * 10 + (**input - '0');
+                (*input)++;
+            }
+        }
+
+        Token t = { tok, value };
         snprintf(t.name, sizeof(t.name), "%d", value);
-        t.dif = TOK_INT;
         return t;
     }
 
