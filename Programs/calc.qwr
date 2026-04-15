@@ -1,7 +1,0 @@
-dq a. 2.2
-dq b. 5.2
-dq c. 0
-dq add (a) (b). (c)
-
-fmt. "Value: %.1f\n"
-print dq c fmt

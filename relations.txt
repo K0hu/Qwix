@@ -1,4 +1,0 @@
-tinyexpr
-GoLink
-NASM
-(Windows API)
