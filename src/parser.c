@@ -21,10 +21,18 @@ char* append(char* str, const char* add_str) {
     return new_str;
 }
 
+enum Type {
+    TYPE_BYTE,
+    TYPE_SHORT,
+    TYPE_INT,
+    TYPE_FLOAT,
+    TYPE_DOUBLE
+};
+
 typedef struct {
     char name[32];
     int offset; // stack offset
-    int type; // 1: byte, 2: short, 4: int, 5: float, 8: double
+    enum Type type; // 1: byte, 2: short, 4: int, 5: float, 8: double
 } Var;
 
 int find_var_by_name(const char *name, Var *vars, int var_count) {
@@ -43,30 +51,31 @@ typedef struct {
     char code[1024];
 } Parser;
 
-char load(char *l, size_t size, Token *tok, Var *vars, int var_count) {
+void load(char *l, size_t size, Token *tok, Var *vars, int var_count) {
     if (tok->type == TOKEN_ID) {
         // Save variable
         int var_index = find_var_by_name(tok->name, vars, var_count);
+        if (var_index < 0) return;
         switch (vars[var_index].type) {
-            case TOKEN_BYTE:
+            case TYPE_BYTE:
                 snprintf(l, size,
                     "mov al, [rbp-%d]",
                     vars[var_index].offset);
                 break;
 
-            case TOKEN_SHORT:
+            case TYPE_SHORT:
                 snprintf(l, size,
                     "mov ax, [rbp-%d]",
                     vars[var_index].offset);
                 break;
 
-            case TOKEN_INT:
+            case TYPE_INT:
                 snprintf(l, size,
                     "mov eax, [rbp-%d]",
                     vars[var_index].offset);
                 break;
 
-            case TOKEN_DOUBLE:
+            case TYPE_DOUBLE:
                 snprintf(l, size,
                     "mov rax, [rbp-%d]",
                     vars[var_index].offset);
@@ -81,26 +90,27 @@ void save(char *s, size_t size, Token *tok, Var *vars, int var_count) {
     if (tok->type == TOKEN_ID) {
         // Save variable
         int var_index = find_var_by_name(tok->name, vars, var_count);
+        if (var_index < 0) return;
         switch (vars[var_index].type) {
-            case TOKEN_BYTE:
+            case TYPE_BYTE:
                 snprintf(s, size,
                     "mov BYTE PTR [rbp-%d], al",
                     vars[var_index].offset);
                 break;
 
-            case TOKEN_SHORT:
+            case TYPE_SHORT:
                 snprintf(s, size,
                     "mov WORD PTR [rbp-%d], ax",
                     vars[var_index].offset);
                 break;
 
-            case TOKEN_INT:
+            case TYPE_INT:
                 snprintf(s, size,
                     "mov DWORD PTR [rbp-%d], eax",
                     vars[var_index].offset);
                 break;
 
-            case TOKEN_DOUBLE:
+            case TYPE_DOUBLE:
                 snprintf(s, size,
                     "mov QWORD PTR [rbp-%d], rax",
                     vars[var_index].offset);
@@ -124,7 +134,7 @@ Parser parse(Token *tokens, int count) {
             strncpy(vars[var_count].name, tokens[i + 1].name, sizeof(vars[var_count].name) - 1);
             offset += 1;
             vars[var_count].offset = offset;
-            vars[var_count].type = 1;
+            vars[var_count].type = TYPE_BYTE;
             var_count++;
             break;
         
@@ -132,7 +142,7 @@ Parser parse(Token *tokens, int count) {
             strncpy(vars[var_count].name, tokens[i + 1].name, sizeof(vars[var_count].name) - 1);
             offset += 2;
             vars[var_count].offset = offset;
-            vars[var_count].type = 2;
+            vars[var_count].type = TYPE_SHORT;
             var_count++;
             break;
         
@@ -140,7 +150,7 @@ Parser parse(Token *tokens, int count) {
             strncpy(vars[var_count].name, tokens[i + 1].name, sizeof(vars[var_count].name) - 1);
             offset += 4;
             vars[var_count].offset = offset;
-            vars[var_count].type = 4;
+            vars[var_count].type = TYPE_INT;
             var_count++;
             break;
         
@@ -148,7 +158,7 @@ Parser parse(Token *tokens, int count) {
             strncpy(vars[var_count].name, tokens[i + 1].name, sizeof(vars[var_count].name) - 1);
             offset += 4;
             vars[var_count].offset = offset;
-            vars[var_count].type = 5;
+            vars[var_count].type = TYPE_FLOAT;
             var_count++;
             break;
         
@@ -156,7 +166,7 @@ Parser parse(Token *tokens, int count) {
             strncpy(vars[var_count].name, tokens[i + 1].name, sizeof(vars[var_count].name) - 1);
             offset += 8;
             vars[var_count].offset = offset;
-            vars[var_count].type = 8;
+            vars[var_count].type = TYPE_DOUBLE;
             var_count++;
             break;
 
