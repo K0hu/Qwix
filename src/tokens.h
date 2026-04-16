@@ -18,8 +18,8 @@ typedef enum {
     TOKEN_ASM,
     
     // Operators
-    TOKEN_CALL,
-    TOKEN_SEC,
+    TOKEN_CALL,     // @
+    TOKEN_SEC,      // #
     TOKEN_ARROWR,   // ->
     TOKEN_ARROWL,   // <-
     TOKEN_PLUS,     // +
@@ -46,6 +46,7 @@ typedef enum {
     TOKEN_SEMICOLON,// ;
     TOKEN_COMMA,    // ,
     TOKEN_COLON,    // :
+    TOKEN_TAB,
     
     // Special
     TOKEN_ID,       // identifier

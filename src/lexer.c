@@ -49,6 +49,12 @@ Token get_next_token(Lexer *lexer) {
     const char *input = lexer->input + lexer->pos;
     int line = lexer->line;
     int column = lexer->column;
+    
+    if (*input == ' ' && *(input+1) == ' ' && *(input+2) == ' ' && *(input+3) == ' ') {
+        lexer->pos = (input + 4) - lexer->input;
+        lexer->column += 4;
+        return make_token(TOKEN_TAB, "    ", 0, line, column);
+    }
 
     // Skip whitespace (aber nicht newline!)
     while (*input && isspace(*input) && *input != '\n') {
@@ -167,7 +173,7 @@ Token get_next_token(Lexer *lexer) {
         lexer->pos = (input + 2) - lexer->input;
         lexer->column += 2;
         return make_token(TOKEN_ARROWL, "<-", 0, line, column);
-    }
+    } 
 
     if (*input == '+' && *(input+1) == '+') {
         lexer->pos = (input + 2) - lexer->input;
