@@ -4,63 +4,13 @@
 #include <ctype.h>
 #include <errno.h>
 #include <stdbool.h>
+#include "tokens.h"
 
 #define MAGENTA     "\033[35m"
 #define RED         "\033[31m"
 #define BLUE        "\033[34m"
 #define RESET       "\033[0m"
 #define FETT        "\033[1m"
-
-typedef enum {
-    // Literals
-    TOKEN_NUMBER,
-    TOKEN_STR,
-    TOKEN_TRUE,
-    TOKEN_FALSE,
-    
-    // Keywords
-    TOKEN_INT,
-    TOKEN_FLOAT,
-    TOKEN_DEF,
-    TOKEN_RET,
-    TOKEN_VAR,
-    TOKEN_ASM,
-    
-    // Operators
-    TOKEN_ARROW,    // ->
-    TOKEN_PLUS,     // +
-    TOKEN_MINUS,    // -
-    TOKEN_MUL,      // *
-    TOKEN_DIV,      // /
-    TOKEN_AND,      // &
-    TOKEN_OR,       // :
-    TOKEN_XOR,      // ^
-    TOKEN_NOT,      // !
-    TOKEN_GT,       // >
-    TOKEN_LT,       // <
-    TOKEN_EQUAL,    // =
-    TOKEN_INC,      // ++
-    TOKEN_DEC,      // --
-    
-    // Delimiters
-    TOKEN_LPAREN,   // (
-    TOKEN_RPAREN,   // )
-    TOKEN_LBRACE,   // {
-    TOKEN_RBRACE,   // }
-    TOKEN_LBRACK,   // [
-    TOKEN_RBRACK,   // ]
-    TOKEN_SEMICOLON,// ;
-    TOKEN_COMMA,    // ,
-    TOKEN_COLON,    // :
-    
-    // Special
-    TOKEN_ID,       // identifier
-    TOKEN_COMMENT,
-    TOKEN_TAB,
-    TOKEN_NEWLINE,
-    TOKEN_EOF,
-    TOKEN_UNKNOWN
-} QTokenType;
 
 typedef struct {
     QTokenType type;
@@ -81,13 +31,15 @@ typedef struct {
 QTokenType check_keyword(const char *str) {
     if (strcmp(str, "int") == 0) return TOKEN_INT;
     if (strcmp(str, "float") == 0) return TOKEN_FLOAT;
-    if (strcmp(str, "def") == 0) return TOKEN_DEF;
+    if (strcmp(str, "double") == 0) return TOKEN_DOUBLE;
+    if (strcmp(str, "short") == 0) return TOKEN_SHORT;
+    if (strcmp(str, "byte") == 0) return TOKEN_BYTE;
+    if (strcmp(str, "func") == 0) return TOKEN_FUNC;
     if (strcmp(str, "ret") == 0) return TOKEN_RET;
-    if (strcmp(str, "var") == 0) return TOKEN_VAR;
     if (strcmp(str, "asm") == 0) return TOKEN_ASM;
     if (strcmp(str, "true") == 0) return TOKEN_TRUE;
     if (strcmp(str, "false") == 0) return TOKEN_FALSE;
-    return TOKEN_ID;  // Identifier, nicht Keyword
+    return TOKEN_ID;
 }
 
 Token make_token(QTokenType type, const char *name, double value, int line, int column) {
@@ -218,7 +170,11 @@ Token get_next_token(Lexer *lexer) {
     if (*input == '-' && *(input+1) == '>') {
         lexer->pos = (input + 2) - lexer->input;
         lexer->column += 2;
-        return make_token(TOKEN_ARROW, "->", 0, line, column);
+        return make_token(TOKEN_ARROWR, "->", 0, line, column);
+    } else if (*input == '<' && *(input+1) == '-') {
+        lexer->pos = (input + 2) - lexer->input;
+        lexer->column += 2;
+        return make_token(TOKEN_ARROWL, "<-", 0, line, column);
     }
 
     if (*input == '+' && *(input+1) == '+') {
@@ -304,20 +260,7 @@ Token* tokenize(const char *input, int *token_count) {
     return tokens;
 }
 
-// Test
-int main() {
-    const char *code = 
-        "10 -> int x\n"
-        "5.5 -> float b\n"
-        "1 + 1 -> float result\n"
-        "x -> b\n"
-        "x++\n"
-        "?(x > 5) { x-- }\n"
-        "ret\n";
-
-    int count = 0;
-    Token *tokens = tokenize(code, &count);
-
+void printTok(Token *tokens, int count) {
     printf(FETT MAGENTA "=== TOKENS ===" RESET "\n");
     for (int i = 0; i < count; i++) {
         printf("[%d:%d] %s: ", tokens[i].line, tokens[i].column, tokens[i].name);
@@ -325,7 +268,8 @@ int main() {
         switch (tokens[i].type) {
             case TOKEN_NUMBER: printf("NUMBER (%.2f)\n", tokens[i].value); break;
             case TOKEN_STR: printf("STRING\n"); break;
-            case TOKEN_ARROW: printf("ARROW\n"); break;
+            case TOKEN_ARROWR: printf("ARROW\n"); break;
+            case TOKEN_ARROWL: printf("ARROW\n"); break;
             case TOKEN_PLUS: printf("PLUS\n"); break;
             case TOKEN_INT: printf("KEYWORD INT\n"); break;
             case TOKEN_FLOAT: printf("KEYWORD FLOAT\n"); break;
@@ -333,6 +277,21 @@ int main() {
             default: printf("TOKEN TYPE %d\n", tokens[i].type);
         }
     }
+}
+
+// Test
+int main(int argc, char *argv[]) {
+    const char *code = 
+        "10 -> int x\n"
+        "5.5 -> float b\n"
+        "1 + 1 -> float result\n"
+        "x <- b\n"
+        "x++\n"
+        "?(x > 5) { x-- }\n"
+        "ret 0\n";
+
+    int count = 0;
+    Token *tokens = tokenize(code, &count);
 
     free(tokens);
     return 0;
