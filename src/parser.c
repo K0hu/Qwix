@@ -179,33 +179,6 @@ Parser parse(Token *tokens, int count) {
     Parser code;
     code.tok = tokens;
     for (int i = 0; i < count; i++) {
-        switch (code.tok[i].type) {
-
-            // Move
-            case TOKEN_ARROWR: 
-                Token left = code.tok[i - 1];
-                Token right = code.tok[i + 1];
-
-                if (left.type == TOKEN_ID) {
-                    // Load variable
-                    snprintf(code.code, sizeof(code.code), "mov rax, [%s]", left.name);
-                } else if (left.type == TOKEN_NUMBER) {
-                    // Load immediate value
-                    snprintf(code.code, sizeof(code.code), "mov rax, %lf", left.value);
-                }
-
-                snprintf(code.code, sizeof(code.code), "mov ");
-                break;
-
-            case TOKEN_ARROWL: 
-                Token left = code.tok[i - 1];
-                Token right = code.tok[i + 1];
-
-                snprintf(code.code, sizeof(code.code), "mov ");
-                break;
-
-            default:
-                break;
-        }
+    
     }
 }
