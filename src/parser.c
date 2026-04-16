@@ -6,7 +6,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <stdbool.h>
-#include "tokens.h"
+#include "lexer.h"
 
 // Adds a string to an string
 char* append(char* str, const char* add_str) {
