@@ -22,7 +22,7 @@ char* append(char* str, const char* add_str) {
 }
 
 typedef struct {
-    Token **tok;
+    Token *tok;
     char code[1024];
 } Parser;
 
@@ -37,14 +37,14 @@ char save(Token *tok, int offset) {
 Parser parse(Token *tokens, int count) {
     int level = 0;
     Parser code;
-    code.tok = *tokens
+    code.tok = tokens;
     for (int i = 0; i < count; i++) {
         switch (code.tok[i].type) {
             case TOKEN_ARROWR: 
                 Token left = code.tok[i - 1];
                 Token right = code.tok[i + 1];
 
-                snprintf(code.code, size_of(code.code), "mov ");
+                snprintf(code.code, sizeof(code.code), "mov ");
         }
     }
 }
