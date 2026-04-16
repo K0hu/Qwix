@@ -18,6 +18,8 @@ typedef enum {
     TOKEN_ASM,
     
     // Operators
+    TOKEN_CALL,
+    TOKEN_SEC,
     TOKEN_ARROWR,   // ->
     TOKEN_ARROWL,   // <-
     TOKEN_PLUS,     // +
@@ -53,3 +55,11 @@ typedef enum {
     TOKEN_EOF,
     TOKEN_UNKNOWN
 } QTokenType;
+
+typedef struct {
+    QTokenType type;
+    double value;
+    char name[128];
+    int line;
+    int column;
+} Token;

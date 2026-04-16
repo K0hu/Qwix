@@ -13,14 +13,6 @@
 #define FETT        "\033[1m"
 
 typedef struct {
-    QTokenType type;
-    double value;
-    char name[128];
-    int line;
-    int column;
-} Token;
-
-typedef struct {
     const char *input;
     int line;
     int column;
@@ -208,13 +200,14 @@ Token get_next_token(Lexer *lexer) {
         case '>': return make_token(TOKEN_GT, ">", 0, line, start_col);
         case '<': return make_token(TOKEN_LT, "<", 0, line, start_col);
         case '=': return make_token(TOKEN_EQUAL, "=", 0, line, start_col);
+        case '@': return make_token(TOKEN_CALL, "@", 0, line, start_col);
         case '(': return make_token(TOKEN_LPAREN, "(", 0, line, start_col);
         case ')': return make_token(TOKEN_RPAREN, ")", 0, line, start_col);
         case '{': return make_token(TOKEN_LBRACE, "{", 0, line, start_col);
         case '}': return make_token(TOKEN_RBRACE, "}", 0, line, start_col);
         case '[': return make_token(TOKEN_LBRACK, "[", 0, line, start_col);
         case ']': return make_token(TOKEN_RBRACK, "]", 0, line, start_col);
-        case ';': return make_token(TOKEN_SEMICOLON, ";", 0, line, start_col);
+        case '#': return make_token(TOKEN_SEC, "#", 0, line, start_col);
         case ',': return make_token(TOKEN_COMMA, ",", 0, line, start_col);
         case '\n': 
             lexer->line++;
