@@ -1,23 +1,10 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
-#include <errno.h>
-#include <stdbool.h>
-#include "tokens.h"
+#include "lexer.h"
 
 #define MAGENTA     "\033[35m"
 #define RED         "\033[31m"
 #define BLUE        "\033[34m"
 #define RESET       "\033[0m"
 #define FETT        "\033[1m"
-
-typedef struct {
-    const char *input;
-    int line;
-    int column;
-    int pos;
-} Lexer;
 
 // Keywords Map
 QTokenType check_keyword(const char *str) {
@@ -29,8 +16,14 @@ QTokenType check_keyword(const char *str) {
     if (strcmp(str, "func") == 0) return TOKEN_FUNC;
     if (strcmp(str, "ret") == 0) return TOKEN_RET;
     if (strcmp(str, "asm") == 0) return TOKEN_ASM;
-    if (strcmp(str, "true") == 0) return TOKEN_TRUE;
-    if (strcmp(str, "false") == 0) return TOKEN_FALSE;
+    if (strcmp(str, "true") == 0) {
+        Token t = make_token(TOKEN_NUMBER, "true", 1, 0, 0);
+        return TOKEN_NUMBER;
+    }
+    if (strcmp(str, "false") == 0) {
+        Token t = make_token(TOKEN_NUMBER, "false", 0, 0, 0);
+        return TOKEN_NUMBER;
+    }
     return TOKEN_ID;
 }
 
@@ -276,22 +269,4 @@ void printTok(Token *tokens, int count) {
             default: printf("TOKEN TYPE %d\n", tokens[i].type);
         }
     }
-}
-
-// Test
-int main(int argc, char *argv[]) {
-    const char *code = 
-        "10 -> int x\n"
-        "5.5 -> float b\n"
-        "1 + 1 -> float result\n"
-        "x <- b\n"
-        "x++\n"
-        "?(x > 5) { x-- }\n"
-        "ret 0\n";
-
-    int count = 0;
-    Token *tokens = tokenize(code, &count);
-
-    free(tokens);
-    return 0;
 }
