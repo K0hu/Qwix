@@ -26,7 +26,8 @@ enum Type {
     TYPE_SHORT,
     TYPE_INT,
     TYPE_FLOAT,
-    TYPE_DOUBLE
+    TYPE_DOUBLE,
+    TYPE_UNDEF
 };
 
 typedef struct {
@@ -51,7 +52,7 @@ typedef struct {
     char code[1024];
 } Parser;
 
-void load(char *l, size_t size, Token *tok, Var *vars, int var_count) {
+enum type load(char *l, size_t size, Token *tok, Var *vars, int var_count) {
     if (tok->type == TOKEN_ID) {
         // Save variable
         int var_index = find_var_by_name(tok->name, vars, var_count);
@@ -61,29 +62,31 @@ void load(char *l, size_t size, Token *tok, Var *vars, int var_count) {
                 snprintf(l, size,
                     "mov al, [rbp-%d]",
                     vars[var_index].offset);
-                break;
+                return TYPE_BYTE;
 
             case TYPE_SHORT:
                 snprintf(l, size,
                     "mov ax, [rbp-%d]",
                     vars[var_index].offset);
-                break;
+                return TYPE_SHORT;
 
             case TYPE_INT:
                 snprintf(l, size,
                     "mov eax, [rbp-%d]",
                     vars[var_index].offset);
-                break;
+                return TYPE_INT;
 
             case TYPE_DOUBLE:
                 snprintf(l, size,
                     "mov rax, [rbp-%d]",
                     vars[var_index].offset);
-                break;
+                return TYPE_DOUBLE;
+            
             default:
                 break;
         }
     }
+    return TYPE_UNDEF;
 }
 
 void save(char *s, size_t size, Token *tok, Var *vars, int var_count) {
@@ -118,6 +121,12 @@ void save(char *s, size_t size, Token *tok, Var *vars, int var_count) {
             default:
                 break;
         }
+    }
+}
+
+void move(Token *par1, Token *par2, char *s, size_t size) {
+    if (tok->type == TOKEN_ID) {
+        
     }
 }
 
@@ -179,6 +188,6 @@ Parser parse(Token *tokens, int count) {
     Parser code;
     code.tok = tokens;
     for (int i = 0; i < count; i++) {
-    
+        
     }
 }
