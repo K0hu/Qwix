@@ -8,6 +8,8 @@
 #include <stdbool.h>
 #include "tokens.h"
 
+int level = 0;
+
 // Adds a string to an string
 char* append(char* str, const char* add_str) {
     int len = str ? strlen(str) : 0;
@@ -124,9 +126,50 @@ void save(char *s, size_t size, Token *tok, Var *vars, int var_count) {
     }
 }
 
-void move(Token *par1, Token *par2, char *s, size_t size) {
-    if (tok->type == TOKEN_ID) {
+void move(Token *loaded, Token *moved, char *s, size_t size, Var *vars, int var_count) {
+    if (moved->type == TOKEN_ID) {
+        char l[32];
+        size_t size = sizeof(l);
+        int spaces_per_level = 4;
+        char indent[level * spaces_per_level + 1];
         
+        memset(indent, ' ', level * spaces_per_level);
+        
+        indent[level * spaces_per_level] = '\0';
+        enum type t = load(&l, size, &moved, vars, var_count);
+        if (loaded->type == TOKEN_ID) {
+
+        } else {
+            
+            int index = find_var_by_name();
+            switch (t) {
+                case TYPE_BYTE:
+                    snprintf(s, size,
+                        "%s\n%smov WORD PTR [rbp-%d], al",
+                        l, indent, );
+                    break;
+
+                case TYPE_SHORT:
+                    snprintf(s, size,
+                        "mov WORD PTR [rbp-%d], ax",
+                        vars[var_index].offset);
+                    break;
+
+                case TYPE_INT:
+                    snprintf(s, size,
+                        "mov DWORD PTR [rbp-%d], eax",
+                        vars[var_index].offset);
+                    break;
+
+                case TYPE_DOUBLE:
+                    snprintf(s, size,
+                        "mov QWORD PTR [rbp-%d], rax",
+                        vars[var_index].offset);
+                    break;
+                default:
+                    break;
+            }
+        }
     }
 }
 
@@ -184,7 +227,6 @@ Parser parse(Token *tokens, int count) {
         }
     }
 
-    int level = 0;
     Parser code;
     code.tok = tokens;
     for (int i = 0; i < count; i++) {
