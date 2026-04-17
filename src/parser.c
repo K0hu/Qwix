@@ -190,10 +190,11 @@ Node* parse_expr(Token *tokens, int *pos) {
     return left;
 }
 
-void gen(Node *n, Var *vars, int var_count) {
-
+void gen(Node *n, Var *vars, int var_count, char *s, size_t size) {
+    char line[64];
     if (n->type == NUM) {
-        printf("mov eax, %d\n", n->value);
+        snprintf(line, (size_t)64, "mov eax, %d\n", n->value);
+        s = append(s, line);
         return;
     }
 
@@ -203,39 +204,37 @@ void gen(Node *n, Var *vars, int var_count) {
             fprintf(stderr, "Unknown variable %s\n", n->name);
             exit(1);
         }
-        printf("mov eax, DWORD PTR [rbp-%d]\n", vars[idx].offset);
+        snprintf(line, (size_t)64, "mov eax, DWORD PTR [rbp-%d]\n", vars[idx].offset);
+        s = append(s, line);
         return;
     }
 
     // LEFT
-    gen(n->left, vars, var_count);
-    printf("push rax\n");
+    gen(n->left, vars, var_count, s, size);
+    s = append(s, "push rax\n");
 
     // RIGHT
-    gen(n->right, vars, var_count);
-
-    printf("mov ebx, eax\n");
-    printf("pop rax\n");
+    gen(n->right, vars, var_count, s, size);
+    s = append(s, "mov, ebx, eax\npop rax\n");
 
     // NOW:
     // eax = left
     // ebx = right
-
     switch (n->type) {
         case ADD:
-            printf("add eax, ebx\n");
+            s = append(s, "add eax, ebx\n");
             break;
 
         case SUB:
-            printf("sub eax, ebx\n");
+            s = append(s, "sub eax, ebx\n");
             break;
 
         case MUL:
-            printf("imul eax, ebx\n");
+            s = append(s, "imul eax, ebx\n");
             break;
 
         case DIV:
-            printf("cdq\nidiv ebx\n");
+            s = append(s, "cdq\nidiv ebx\n");
             break;
     }
 }
@@ -472,8 +471,8 @@ Parser parse(Token *tokens, int count) {
             
             case TOKEN_NUMBER:
                 n = parse_expr(tokens, &i);
-                gen(n, vars, var_count);   
-
+                gen(n, vars, var_count, line, (size_t)512);   
+                code.code = append(code.code, line);
                 default_case = false;
                 break;
 
@@ -492,7 +491,8 @@ Parser parse(Token *tokens, int count) {
 // test
 int main() {
     const char *code = 
-        "int x <- 5 + 4 * 6";
+        "int y <- 4 - 3\n"
+        "int x <- 5 + y * 6\n";
 
     int count = 0;
     Token *tokens = tokenize(code, &count);
