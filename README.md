@@ -20,3 +20,8 @@ a : b ; or
     a-- ; dec
 }
 ```
+
+## What should `Qwix` be like?
+
+I want to make Qwix, because I want to understand compiler and how the languages work. 
+I want Qwix to be an clear structure that is on a low level. Hopefully work on all systems and is small. At first the simple things should work. 
