@@ -4,7 +4,7 @@
 ``` Nasm
 1 + 1 -> float b ; def
 
-a -> b ; mov
+a <- b ; mov
 
 a & b ; and
 a > b ; greater
