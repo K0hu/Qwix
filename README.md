@@ -1,6 +1,6 @@
 # Qwix
 
-## Sytax
+## Syntax
 ``` Nasm
 1 + 1 -> float b ; def
 
