@@ -104,7 +104,7 @@ static void make_indent(char *buf, size_t buf_size) {
     buf[spaces] = '\0';
 }
 
-enum Expr { NUM, VAR, ADD, SUB, MUL, DIV };
+enum Expr { NUM, VAR, ADD, SUB, MUL, DIV, AND, OR, XOR, NOT };
 typedef struct Node {
     enum Expr type;
     struct Node *left;
@@ -162,10 +162,13 @@ Node* parse_term(Token *tokens, int *pos) {
 
         Node *right = parse_factor(tokens, pos);
 
-        if (op.type == TOKEN_MUL)
+        if (op.type == TOKEN_MUL) {
             left = make_node(MUL, left, right, 0, NULL);
-        else
+        } else if (op.type == TOKEN_DIV) {
             left = make_node(DIV, left, right, 0, NULL);
+        } else if (op.type == TOKEN_NOT) {
+            left = make_node(NOT, left, right, 0, NULL);
+        }
     }
 
     return left;
@@ -182,9 +185,15 @@ Node* parse_expr(Token *tokens, int *pos) {
 
         if (op.type == TOKEN_PLUS) {
             left = make_node(ADD, left, right, 0, NULL);
-        } else {
+        } else if (op.type == TOKEN_MINUS) {
             left = make_node(SUB, left, right, 0, NULL);
-        } 
+        } else if (op.type == TOKEN_AND) {
+            left = make_node(AND, left, right, 0, NULL);
+        } else if (op.type == TOKEN_XOR) {
+            left = make_node(XOR, left, right, 0, NULL);
+        } else if (op.type == TOKEN_OR) {
+            left = make_node(OR, left, right, 0, NULL);
+        }
     }
 
     return left;
@@ -231,6 +240,18 @@ void gen(Node *n, Var *vars, int var_count, char *s, size_t size) {
 
         case MUL:
             s = append(s, "imul eax, ebx\n");
+            break;
+        
+        case AND:
+            s = append(s, "and eax, ebx\n");
+            break;
+        
+        case XOR:
+            s = append(s, "xor eax, ebx\n");
+            break;
+        
+        case OR:
+            s = append(s, "or eax, ebx\n");
             break;
 
         case DIV:
