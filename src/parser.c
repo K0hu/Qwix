@@ -177,7 +177,9 @@ Node* parse_term(Token *tokens, int *pos) {
 Node* parse_expr(Token *tokens, int *pos) {
     Node *left = parse_term(tokens, pos);
 
-    while (tokens[*pos].type == TOKEN_MINUS || tokens[*pos].type == TOKEN_PLUS) {
+    while (tokens[*pos].type == TOKEN_MINUS || tokens[*pos].type == TOKEN_PLUS
+        || tokens[*pos].type == TOKEN_AND || tokens[*pos].type == TOKEN_OR
+        || tokens[*pos].type == TOKEN_XOR) {
         Token op = tokens[*pos];
         (*pos)++;
 
@@ -199,11 +201,11 @@ Node* parse_expr(Token *tokens, int *pos) {
     return left;
 }
 
-void gen(Node *n, Var *vars, int var_count, char *s, size_t size) {
+void gen(Node *n, Var *vars, int var_count, char **s) {
     char line[64];
     if (n->type == NUM) {
         snprintf(line, (size_t)64, "mov eax, %d\n", n->value);
-        s = append(s, line);
+        *s = append(*s, line);
         return;
     }
 
@@ -214,48 +216,48 @@ void gen(Node *n, Var *vars, int var_count, char *s, size_t size) {
             exit(1);
         }
         snprintf(line, (size_t)64, "mov eax, DWORD PTR [rbp-%d]\n", vars[idx].offset);
-        s = append(s, line);
+        *s = append(*s, line);
         return;
     }
 
     // LEFT
-    gen(n->left, vars, var_count, s, size);
-    s = append(s, "push rax\n");
+    gen(n->left, vars, var_count, s);
+    *s = append(*s, "push rax\n");
 
     // RIGHT
-    gen(n->right, vars, var_count, s, size);
-    s = append(s, "mov, ebx, eax\npop rax\n");
+    gen(n->right, vars, var_count, s);
+    *s = append(*s, "mov, ebx, eax\npop rax\n");
 
     // NOW:
     // eax = left
     // ebx = right
     switch (n->type) {
         case ADD:
-            s = append(s, "add eax, ebx\n");
+            *s = append(*s, "add eax, ebx\n");
             break;
 
         case SUB:
-            s = append(s, "sub eax, ebx\n");
+            *s = append(*s, "sub eax, ebx\n");
             break;
 
         case MUL:
-            s = append(s, "imul eax, ebx\n");
+            *s = append(*s, "imul eax, ebx\n");
             break;
         
         case AND:
-            s = append(s, "and eax, ebx\n");
+            *s = append(*s, "and eax, ebx\n");
             break;
         
         case XOR:
-            s = append(s, "xor eax, ebx\n");
+            *s = append(*s, "xor eax, ebx\n");
             break;
         
         case OR:
-            s = append(s, "or eax, ebx\n");
+            *s = append(*s, "or eax, ebx\n");
             break;
 
         case DIV:
-            s = append(s, "cdq\nidiv ebx\n");
+            *s = append(*s, "cdq\nidiv ebx\n");
             break;
     }
 }
@@ -492,8 +494,7 @@ Parser parse(Token *tokens, int count) {
             
             case TOKEN_NUMBER:
                 n = parse_expr(tokens, &i);
-                gen(n, vars, var_count, line, (size_t)512);   
-                code.code = append(code.code, line);
+                gen(n, vars, var_count, &code.code);   
                 default_case = false;
                 break;
 
@@ -512,8 +513,7 @@ Parser parse(Token *tokens, int count) {
 // test
 int main() {
     const char *code = 
-        "int y <- 4 - 3\n"
-        "int x <- 5 + y * 6\n";
+        "int y <- 4 & 4\n";
 
     int count = 0;
     Token *tokens = tokenize(code, &count);
